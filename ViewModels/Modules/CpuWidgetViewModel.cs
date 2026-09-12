@@ -70,14 +70,22 @@ public sealed class CpuWidgetViewModel : ViewModelBase
         get
         {
             var maxColumns = Math.Max(1, Math.Min(8, CoreLoads.Count));
-            return Math.Clamp((int)(Math.Max(1, Width - 32) / 64d), Math.Min(2, maxColumns), maxColumns);
+            return Math.Clamp((int)(Math.Max(1, Width - 32) / 90d), Math.Min(2, maxColumns), maxColumns);
         }
     }
-    public double CoreGaugeSize => Math.Clamp(Math.Min((Width - 34) / Math.Max(1, CoreColumnCount) - 10, (Height - 88) / Math.Max(1, Math.Ceiling(Math.Max(1, CoreLoads.Count) / (double)Math.Max(1, CoreColumnCount))) - 8), 24, 86);
+    public double CoreGaugeSize => Math.Clamp(Math.Min((Width - 34) / Math.Max(1, CoreColumnCount) - 10, (Height - 88) / Math.Max(1, Math.Ceiling(Math.Max(1, CoreLoads.Count) / (double)Math.Max(1, CoreColumnCount))) - 8), 24, 76);
     public double CoreValueFontSize => Math.Clamp(CoreGaugeSize * 0.22, 9, 16);
     public string CoreCountText => $"{CoreLoads.Count} LOGICAL PROCESSORS";
-    public string WidgetHeaderTitle => Width < 250 ? Kind switch { "Temperature" => "CPU TEMP", "Cores" => "CORE LOAD", _ => Title } : Title;
+    public string WidgetHeaderTitle => Width < 290 ? Kind switch
+    {
+        "Load" => "CPU LOAD", "Temperature" => "CPU TEMP", "Clock" => "CPU CLOCK", "Cores" => "CORE LOAD", "History" => "HISTORY",
+        "Power" => "CPU POWER", "Voltage" => "VOLTAGE", "Temperatures" => "THERMALS", "PowerLimits" => "LIMITS", "Frequency" => "FREQ. BANDS",
+        "CStates" => "C-STATES", "Information" => "CPU INFO", "Processes" => "TOP PROCESSES", "PerCore" => "PER-CORE", "Sensors" => "SENSORS", _ => Title
+    } : Title;
     public double WidgetHeaderFontSize => Width < 230 ? 8 : Width < 330 ? 9 : 10;
+    public bool ShowInlineAccentPicker => Width >= 250;
+    public bool ShowInlineCollapse => Width >= 270;
+    public bool ShowInlineInfo => Width >= 205;
     public double WidgetValueFontSize => Math.Clamp(Width * 0.105, 20, 42);
     public double GraphHeight => Math.Clamp(Height * 0.28, 38, 62);
     public double GraphMinimum => IsTemperature ? 20 : 0;
@@ -186,7 +194,7 @@ public sealed class CpuWidgetViewModel : ViewModelBase
     }
 
     private void CycleStyle() { var options = StyleOptions; var index = Array.IndexOf(options.ToArray(), Style); Style = options[(index + 1) % options.Count]; }
-    private void ToggleCollapse() { GridRowSpan = IsCollapsed ? (Kind is "Cores" or "History" or "PerCore" ? 3 : 2) : 1; Changed?.Invoke(); }
+    private void ToggleCollapse() { GridRowSpan = IsCollapsed ? (Kind is "Cores" or "History" ? 2 : Kind == "PerCore" ? 3 : 1) : 1; Changed?.Invoke(); }
     private void AddStyle() { var next = Styles.Count == 0 ? 1 : Styles.Max(style => style.Index) + 1; var style = ActiveStyle.Clone(next); style.Changed = StyleChanged; Styles.Add(style); OnPropertyChanged(nameof(StyleOptions)); Style = next; Changed?.Invoke(); }
     private void StyleChanged() { NotifyVisuals(); }
     private void NotifyVisuals()
@@ -194,6 +202,6 @@ public sealed class CpuWidgetViewModel : ViewModelBase
         OnPropertyChanged(nameof(SurfaceBrush)); OnPropertyChanged(nameof(BorderBrush)); OnPropertyChanged(nameof(TextBrush)); OnPropertyChanged(nameof(MutedBrush)); OnPropertyChanged(nameof(GraphBrush)); OnPropertyChanged(nameof(SelectedColor)); OnPropertyChanged(nameof(AccentColorHex));
         if (IsCores) foreach (var core in CoreLoads) core.UpdateBrushes(ActiveStyle.AccentBrush, ActiveStyle.BorderBrush, ActiveStyle.TextBrush);
     }
-    private void NotifySize() { OnPropertyChanged(nameof(CoreColumnCount)); OnPropertyChanged(nameof(CoreGaugeSize)); OnPropertyChanged(nameof(CoreValueFontSize)); OnPropertyChanged(nameof(WidgetHeaderFontSize)); OnPropertyChanged(nameof(WidgetHeaderTitle)); OnPropertyChanged(nameof(WidgetValueFontSize)); OnPropertyChanged(nameof(GraphHeight)); }
+    private void NotifySize() { OnPropertyChanged(nameof(CoreColumnCount)); OnPropertyChanged(nameof(CoreGaugeSize)); OnPropertyChanged(nameof(CoreValueFontSize)); OnPropertyChanged(nameof(WidgetHeaderFontSize)); OnPropertyChanged(nameof(WidgetHeaderTitle)); OnPropertyChanged(nameof(ShowInlineAccentPicker)); OnPropertyChanged(nameof(ShowInlineCollapse)); OnPropertyChanged(nameof(ShowInlineInfo)); OnPropertyChanged(nameof(WidgetValueFontSize)); OnPropertyChanged(nameof(GraphHeight)); }
     private static string ToHex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
 }

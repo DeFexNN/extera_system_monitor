@@ -129,6 +129,16 @@ public sealed class OverviewModuleViewModel : MonitorModuleViewModel
 public sealed class CpuModuleViewModel : MonitorModuleViewModel
 {
     private static readonly string[] WidgetKinds = ["Load", "Temperature", "Clock", "Cores", "History", "Power", "Voltage", "Temperatures", "PowerLimits", "Frequency", "CStates", "Information", "Processes", "PerCore", "Sensors"];
+    private static readonly string[] DefaultWidgetKinds = ["Load", "Temperature", "Clock", "Cores", "History", "Power", "Voltage", "Temperatures", "PowerLimits", "Frequency", "Information", "Processes", "Sensors"];
+    private static readonly IReadOnlyDictionary<string, (int Column, int Row, int ColumnSpan, int RowSpan)> PreviousDefaultGrid = new Dictionary<string, (int, int, int, int)>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Load"] = (0, 0, 4, 2), ["Temperature"] = (4, 0, 4, 2), ["Clock"] = (8, 0, 4, 2),
+        ["Cores"] = (0, 2, 6, 3), ["History"] = (6, 2, 6, 3),
+        ["Power"] = (0, 5, 2, 2), ["Voltage"] = (2, 5, 2, 2), ["Temperatures"] = (4, 5, 2, 2),
+        ["PowerLimits"] = (6, 5, 2, 2), ["Frequency"] = (8, 5, 4, 2),
+        ["CStates"] = (0, 7, 3, 2), ["Information"] = (3, 7, 3, 2), ["Processes"] = (6, 7, 3, 2),
+        ["PerCore"] = (9, 7, 3, 2), ["Sensors"] = (0, 9, 12, 2)
+    };
     private const int HistoryLimit = 900;
     private double _usage, _temperature;
     private string _temperatureSource = "Sensor scan pending";
@@ -137,6 +147,7 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
     private ICpuCustomizationRepository? _customizationRepository;
     private string _historyRange = "10m";
     private double _lastSurfaceWidth;
+    private bool _isWidgetLibraryVisible;
     private bool _showHistoryLoad = true, _showHistoryTemperature = true, _showHistoryClock = true, _showHistoryPower = true;
     private bool _sensorsExpanded;
 
@@ -160,6 +171,7 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
         {
             if (!SetProperty(ref _accentColor, value)) return;
             OnPropertyChanged(nameof(AccentBrush));
+            OnPropertyChanged(nameof(HistoryLoadBrush));
         }
     }
     public string SelectedAccentPreset
@@ -192,6 +204,11 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
     }
     public string SelectedAccentHex => $"#{SelectedAccentColor.R:X2}{SelectedAccentColor.G:X2}{SelectedAccentColor.B:X2}";
     public IBrush AccentBrush => new SolidColorBrush(AccentColor);
+    public IBrush HistoryLoadBrush => new SolidColorBrush(SelectedAccentColor);
+    public IBrush HistoryTemperatureBrush => GetAccentBrush("AMBER");
+    public IBrush HistoryClockBrush => GetAccentBrush("BLUE");
+    public IBrush HistoryPowerBrush => GetAccentBrush("PURPLE");
+    public bool IsWidgetLibraryVisible { get => _isWidgetLibraryVisible; private set => SetProperty(ref _isWidgetLibraryVisible, value); }
     public string TemperatureLabel => Temperature <= 0 ? "Unavailable" : $"{Temperature:0}°C";
     public string Cores => $"{Environment.ProcessorCount} logical cores";
     public ICommand AddLoadCommand { get; }
@@ -202,8 +219,15 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
     public ICommand AddWidgetCommand { get; }
     public ICommand ResetLayoutCommand { get; }
     public ICommand ResetAccentsCommand { get; }
-    public string HistoryRange { get => _historyRange; set { if (SetProperty(ref _historyRange, HistoryRanges.Contains(value) ? value : "10m")) { OnPropertyChanged(nameof(HistorySampleCount)); OnPropertyChanged(nameof(HistoryLoad)); OnPropertyChanged(nameof(HistoryTemperature)); OnPropertyChanged(nameof(HistoryClock)); OnPropertyChanged(nameof(HistoryPower)); SaveCustomization(); } } }
+    public string HistoryRange { get => _historyRange; set { if (SetProperty(ref _historyRange, HistoryRanges.Contains(value) ? value : "10m")) { OnPropertyChanged(nameof(HistorySampleCount)); OnPropertyChanged(nameof(HistoryLoad)); OnPropertyChanged(nameof(HistoryTemperature)); OnPropertyChanged(nameof(HistoryClock)); OnPropertyChanged(nameof(HistoryPower)); OnPropertyChanged(nameof(HistoryTicks)); SaveCustomization(); } } }
     public int HistorySampleCount => HistoryRange switch { "1m" => 30, "5m" => 150, "30m" => 900, _ => 300 };
+    public IReadOnlyList<string> HistoryTicks => HistoryRange switch
+    {
+        "1m" => ["-60s", "-48s", "-36s", "-24s", "-12s", "Now"],
+        "5m" => ["-5m", "-4m", "-3m", "-2m", "-1m", "Now"],
+        "30m" => ["-30m", "-24m", "-18m", "-12m", "-6m", "Now"],
+        _ => ["-10m", "-8m", "-6m", "-4m", "-2m", "Now"]
+    };
     public bool ShowHistoryLoad { get => _showHistoryLoad; set { if (SetProperty(ref _showHistoryLoad, value)) SaveCustomization(); } }
     public bool ShowHistoryTemperature { get => _showHistoryTemperature; set { if (SetProperty(ref _showHistoryTemperature, value)) SaveCustomization(); } }
     public bool ShowHistoryClock { get => _showHistoryClock; set { if (SetProperty(ref _showHistoryClock, value)) SaveCustomization(); } }
@@ -236,9 +260,11 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
         ResetLayoutCommand = new RelayCommand(_ => ResetLayout());
         ResetAccentsCommand = new RelayCommand(_ => ResetAccents());
         foreach (var kind in WidgetKinds) WidgetLibrary.Add(new CpuWidgetLibraryItemViewModel(kind, () => AddWidget(kind)));
-        foreach (var kind in WidgetKinds)
+        foreach (var kind in DefaultWidgetKinds)
             AddWidget(kind, save: false);
     }
+
+    public void SetWidgetLibraryVisible(bool visible) => IsWidgetLibraryVisible = visible;
 
     public void LoadCustomization(ICpuCustomizationRepository repository)
     {
@@ -252,13 +278,28 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
         _showHistoryPower = settings.HistorySeries.Contains("Power", StringComparison.OrdinalIgnoreCase);
         _historyRange = HistoryRanges.Contains(settings.HistoryRange) ? settings.HistoryRange : "10m";
         _sensorsExpanded = settings.SensorsExpanded;
-        if (settings.Widgets.Count > 0)
+        if (IsPreviousDefaultLayout(settings.Widgets))
+        {
+            var previous = settings.Widgets.ToDictionary(widget => widget.Kind, StringComparer.OrdinalIgnoreCase);
+            Widgets.Clear();
+            foreach (var kind in DefaultWidgetKinds.Where(previous.ContainsKey))
+            {
+                AddWidget(kind, save: false);
+                if (!previous.TryGetValue(kind, out var old)) continue;
+                var restored = Widgets.Last();
+                restored.LoadStyles(settings.WidgetStyles.Where(style => style.Kind.Equals(kind, StringComparison.OrdinalIgnoreCase)));
+                restored.Style = old.Style;
+                try { restored.SetAccent(Color.Parse(old.AccentColorHex)); } catch (FormatException) { }
+            }
+        }
+        else if (settings.Widgets.Count > 0)
         {
             var oldPixelLayout = settings.Widgets.Any(widget => widget.X > 12 || widget.Y > 40 || widget.Width > 12 || widget.Height > 8);
             Widgets.Clear();
             if (oldPixelLayout)
             {
-                foreach (var kind in WidgetKinds) AddWidget(kind, save: false);
+                foreach (var kind in settings.Widgets.Select(widget => widget.Kind).Distinct(StringComparer.OrdinalIgnoreCase))
+                    if (WidgetKinds.Contains(kind, StringComparer.OrdinalIgnoreCase)) AddWidget(kind, save: false);
                 foreach (var previous in settings.Widgets)
                 {
                     var loaded = Widgets.FirstOrDefault(item => item.Kind.Equals(previous.Kind, StringComparison.OrdinalIgnoreCase));
@@ -281,10 +322,11 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
             }
             NotifyAddAvailability();
         }
-        OnPropertyChanged(nameof(HistoryRange)); OnPropertyChanged(nameof(HistorySampleCount));
+        OnPropertyChanged(nameof(HistoryRange)); OnPropertyChanged(nameof(HistorySampleCount)); OnPropertyChanged(nameof(HistoryTicks));
         OnPropertyChanged(nameof(ShowHistoryLoad)); OnPropertyChanged(nameof(ShowHistoryTemperature)); OnPropertyChanged(nameof(ShowHistoryClock)); OnPropertyChanged(nameof(ShowHistoryPower));
         OnPropertyChanged(nameof(SensorsExpanded)); OnPropertyChanged(nameof(SensorsCollapsed));
         SelectedAccentPreset = Accents.Any(accent => accent.Name == _selectedAccentPreset) ? _selectedAccentPreset : "TEAL";
+        OnPropertyChanged(nameof(HistoryTemperatureBrush)); OnPropertyChanged(nameof(HistoryClockBrush)); OnPropertyChanged(nameof(HistoryPowerBrush));
         SaveCustomization();
     }
 
@@ -311,6 +353,7 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
         _selectedAccentPreset = "TEAL";
         OnPropertyChanged(nameof(SelectedAccentPreset));
         AccentColor = Accents[0].GetColor();
+        OnPropertyChanged(nameof(HistoryTemperatureBrush)); OnPropertyChanged(nameof(HistoryClockBrush)); OnPropertyChanged(nameof(HistoryPowerBrush));
         SaveCustomization();
     }
 
@@ -373,9 +416,9 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
     {
         if (surfaceWidth <= 0) return;
         _lastSurfaceWidth = surfaceWidth;
-        const double margin = 12, gap = 12, rowUnit = 120;
+        const double margin = 12, gap = 12, rowUnit = 110;
         var usableWidth = Math.Max(160, surfaceWidth - margin * 2);
-        var columns = usableWidth < 480 ? 2 : usableWidth < 1100 ? 6 : 12;
+        var columns = usableWidth < 480 ? 2 : usableWidth < 900 ? 6 : 12;
         var cellWidth = Math.Max(1, (usableWidth - gap * (columns - 1)) / columns);
         var occupied = new HashSet<(int Column, int Row)>();
         var placements = new List<(CpuWidgetViewModel Widget, int Column, int Row, int Span, int Rows)>();
@@ -423,8 +466,8 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
     public void CaptureWidgetGridLayout(double surfaceWidth)
     {
         if (surfaceWidth <= 0) return;
-        const double margin = 12, gap = 12, rowUnit = 120;
-        var columns = surfaceWidth - margin * 2 < 480 ? 2 : surfaceWidth - margin * 2 < 1100 ? 6 : 12;
+        const double margin = 12, gap = 12, rowUnit = 110;
+        var columns = surfaceWidth - margin * 2 < 480 ? 2 : surfaceWidth - margin * 2 < 900 ? 6 : 12;
         var cellWidth = Math.Max(1, (surfaceWidth - margin * 2 - gap * (columns - 1)) / columns);
         foreach (var widget in Widgets)
         {
@@ -439,23 +482,23 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
     private static (int Column, int Row, int ColumnSpan, int RowSpan) DefaultGrid(string kind) => kind switch
     {
         "Load" => (0, 0, 4, 2), "Temperature" => (4, 0, 4, 2), "Clock" => (8, 0, 4, 2),
-        "Cores" => (0, 2, 6, 3), "History" => (6, 2, 6, 3),
-        "Power" => (0, 5, 2, 2), "Voltage" => (2, 5, 2, 2), "Temperatures" => (4, 5, 2, 2),
-        "PowerLimits" => (6, 5, 2, 2), "Frequency" => (8, 5, 4, 2),
-        "CStates" => (0, 7, 3, 2), "Information" => (3, 7, 3, 2), "Processes" => (6, 7, 3, 2), "PerCore" => (9, 7, 3, 2),
-        "Sensors" => (0, 9, 12, 2), _ => (0, 10, 4, 2)
+        "Cores" => (0, 2, 6, 2), "History" => (6, 2, 6, 2),
+        "Power" => (0, 4, 2, 1), "Voltage" => (2, 4, 2, 1), "Temperatures" => (4, 4, 2, 1),
+        "PowerLimits" => (6, 4, 2, 1), "Frequency" => (8, 4, 4, 1),
+        "Information" => (0, 5, 4, 1), "Processes" => (4, 5, 4, 1), "Sensors" => (8, 5, 4, 1),
+        "CStates" => (0, 6, 3, 2), "PerCore" => (0, 6, 6, 3), _ => (0, 7, 4, 2)
     };
 
     private (int Column, int Row, int Span, int Rows) ResponsivePlacement(CpuWidgetViewModel widget, int columns)
     {
         if (columns == 12) return (widget.GridColumn, widget.GridRow, widget.GridColumnSpan, widget.GridRowSpan);
-        var rows = widget.IsCollapsed ? 1 : widget.Kind switch { "Cores" or "History" or "PerCore" => 3, "Sensors" => SensorsExpanded ? 4 : 2, _ => 2 };
+        var rows = widget.IsCollapsed ? 1 : widget.Kind switch { "Cores" or "History" => 2, "PerCore" => 3, "Sensors" => SensorsExpanded ? 4 : 1, _ => widget.GridRowSpan };
         if (columns == 6)
         {
             var span = widget.Kind is "Cores" or "History" or "PerCore" or "Sensors" or "Frequency" ? 6 : 3;
             return (0, 0, span, rows);
         }
-        return (0, 0, 2, rows);
+        return (0, 0, 2, widget.IsCores && !widget.IsCollapsed ? 6 : rows);
     }
 
     private static bool CanPlace(HashSet<(int Column, int Row)> occupied, int column, int row, int span, int rows, int maxColumns)
@@ -472,25 +515,29 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
 
     private void PlaceInNextAvailableGridSlot(CpuWidgetViewModel widget)
     {
+        var placement = DefaultGrid(widget.Kind);
         widget.GridColumn = 0;
         widget.GridRow = Widgets.Select(item => item.GridRow + item.GridRowSpan).DefaultIfEmpty(0).Max();
-        widget.GridColumnSpan = widget.Kind is "Cores" or "History" or "PerCore" or "Frequency" ? 6 : widget.Kind == "Sensors" ? 12 : 3;
-        widget.GridRowSpan = widget.Kind is "Cores" or "History" or "PerCore" or "Frequency" ? 3 : 2;
+        widget.GridColumnSpan = placement.ColumnSpan;
+        widget.GridRowSpan = placement.RowSpan;
     }
 
     private void ResetLayout()
     {
         var oldWidgets = Widgets.ToDictionary(widget => widget.Kind, StringComparer.OrdinalIgnoreCase);
-        var visibleKinds = Widgets.Count == 0 ? WidgetKinds : Widgets.Select(widget => widget.Kind).ToArray();
         Widgets.Clear();
-        foreach (var kind in WidgetKinds.Where(kind => visibleKinds.Contains(kind, StringComparer.OrdinalIgnoreCase)))
+        foreach (var kind in DefaultWidgetKinds)
         {
             AddWidget(kind, save: false);
             if (!oldWidgets.TryGetValue(kind, out var old)) continue;
             var restored = Widgets.Last();
             restored.Style = old.Style;
+            restored.SetAccent(old.SelectedColor);
             restored.LoadStyles(old.Styles.Select(style => new CpuWidgetStyleSettings(kind, style.Index, style.BackgroundHex, style.TextHex, style.MutedHex, style.BorderHex, style.AccentHex)));
         }
+        ShowHistoryLoad = ShowHistoryTemperature = ShowHistoryClock = ShowHistoryPower = true;
+        HistoryRange = "10m";
+        SensorsExpanded = false;
         NotifyAddAvailability();
         foreach (var item in WidgetLibrary) item.Refresh(Widgets.Any(widget => widget.Kind == item.Kind));
         if (_lastSurfaceWidth > 0) ResizeWidgets(_lastSurfaceWidth);
@@ -512,7 +559,19 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
             OnPropertyChanged(nameof(SelectedAccentColor));
             OnPropertyChanged(nameof(SelectedAccentHex));
         }
+        OnPropertyChanged(nameof(HistoryTemperatureBrush));
+        OnPropertyChanged(nameof(HistoryClockBrush));
+        OnPropertyChanged(nameof(HistoryPowerBrush));
         SaveCustomization();
+    }
+
+    private IBrush GetAccentBrush(string name) => Accents.FirstOrDefault(item => item.Name.Equals(name, StringComparison.OrdinalIgnoreCase))?.SwatchBrush ?? AccentBrush;
+
+    private static bool IsPreviousDefaultLayout(IReadOnlyList<CpuWidgetLayout> widgets)
+    {
+        if (widgets.Count < 10 || !widgets.Any(widget => widget.Kind.Equals("Cores", StringComparison.OrdinalIgnoreCase) && widget.X == 0 && widget.Y == 2 && widget.Width == 6 && widget.Height == 3)) return false;
+        return widgets.All(widget => PreviousDefaultGrid.TryGetValue(widget.Kind, out var position) &&
+            widget.X == position.Column && widget.Y == position.Row && widget.Width == position.ColumnSpan && widget.Height == position.RowSpan);
     }
 
     private static void Append(ObservableCollection<double> values, double value)

@@ -4,15 +4,43 @@
              xmlns:controls="using:ExteraMonitor.Views.Controls"
              x:Class="ExteraMonitor.Views.Modules.CpuModuleView"
              x:CompileBindings="False">
+  <UserControl.Styles>
+    <Style Selector="ToggleButton.cpu-history-toggle">
+      <Setter Property="Background" Value="{DynamicResource ThemeWindowBrush}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource ThemeSoftBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Foreground" Value="{DynamicResource ThemeChromeBrush}"/>
+      <Setter Property="CornerRadius" Value="7"/>
+      <Setter Property="Padding" Value="8,4"/>
+      <Setter Property="MinHeight" Value="26"/>
+    </Style>
+    <Style Selector="ToggleButton.cpu-history-toggle:checked">
+      <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
+      <Setter Property="Foreground" Value="{DynamicResource ThemeWindowBrush}"/>
+    </Style>
+    <Style Selector="ToggleButton.cpu-history-toggle:pointerover">
+      <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
+    </Style>
+    <Style Selector="ToggleButton.cpu-history-toggle:checked:pointerover">
+      <Setter Property="Background" Value="{DynamicResource ThemeChromeBrush}"/>
+      <Setter Property="Foreground" Value="{DynamicResource ThemeWindowBrush}"/>
+    </Style>
+  </UserControl.Styles>
   <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-    <StackPanel Margin="24,20,24,28" Spacing="14">
-      <StackPanel Spacing="10">
-        <StackPanel Spacing="3" VerticalAlignment="Center">
+    <StackPanel Margin="24,20,24,28" Spacing="12">
+      <WrapPanel>
+        <StackPanel Width="430" Margin="0,0,16,8" Spacing="3" VerticalAlignment="Center">
           <TextBlock Text="CPU" FontSize="30" FontWeight="SemiBold"/>
-          <TextBlock Text="Monitor your processor in real time. Arrange cards to build your workspace." Classes="muted" FontSize="13" TextWrapping="Wrap"/>
+          <TextBlock Text="Monitor your processor in real time. Drag, style and resize the cards to build your workspace." Classes="muted" FontSize="13" TextWrapping="Wrap"/>
         </StackPanel>
-        <WrapPanel VerticalAlignment="Center">
-          <Button Classes="module-action" Content="＋ ADD WIDGET" Margin="0,0,8,6">
+        <StackPanel Orientation="Horizontal" Spacing="7" Margin="0,0,10,8" VerticalAlignment="Center">
+          <TextBlock Text="ACCENT COLOR" Classes="eyebrow" VerticalAlignment="Center" FontSize="9"/>
+          <ComboBox Width="98" ItemsSource="{Binding AccentPresets}" SelectedItem="{Binding SelectedAccentPreset}"/>
+          <controls:ManualColorPicker SelectedColor="{Binding SelectedAccentColor, Mode=TwoWay}" ColorApplied="AccentColorApplied" ToolTip.Tip="Edit active accent color"/>
+          <TextBlock Text="{Binding SelectedAccentHex}" Classes="muted" FontSize="10" VerticalAlignment="Center"/>
+        </StackPanel>
+        <Button Classes="module-action" Content="＋ ADD WIDGET" Margin="0,0,8,8">
             <Button.Flyout>
               <Flyout>
                 <Border Width="330" MaxHeight="560" Padding="14" Background="{DynamicResource ThemeWindowBrush}" BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="1" CornerRadius="12">
@@ -40,8 +68,8 @@
                 </Border>
               </Flyout>
             </Button.Flyout>
-          </Button>
-          <Button Classes="module-action" Content="LAYOUT ▾" Margin="0,0,8,6">
+        </Button>
+        <Button Classes="module-action" Content="LAYOUT ▾" Margin="0,0,8,8">
             <Button.Flyout>
               <Flyout>
                 <Border Padding="12" Background="{DynamicResource ThemeWindowBrush}" BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="1" CornerRadius="10">
@@ -53,8 +81,8 @@
                 </Border>
               </Flyout>
             </Button.Flyout>
-          </Button>
-          <Button Classes="module-action" Content="PALETTE ▾" Margin="0,0,0,6">
+        </Button>
+        <Button Classes="module-action" Content="⋯" Width="42" Margin="0,0,0,8" ToolTip.Tip="Accent palette and reset">
             <Button.Flyout>
               <Flyout>
                 <Border Width="310" Padding="14" Background="{DynamicResource ThemeWindowBrush}" BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="1" CornerRadius="12">
@@ -90,21 +118,11 @@
                 </Border>
               </Flyout>
             </Button.Flyout>
-          </Button>
-        </WrapPanel>
-      </StackPanel>
+        </Button>
+      </WrapPanel>
 
-      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-        <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
-          <TextBlock Text="ACCENT" Classes="eyebrow" VerticalAlignment="Center"/>
-          <ComboBox Width="118" ItemsSource="{Binding AccentPresets}" SelectedItem="{Binding SelectedAccentPreset}"/>
-          <controls:ManualColorPicker SelectedColor="{Binding SelectedAccentColor, Mode=TwoWay}" ColorApplied="AccentColorApplied" ToolTip.Tip="Edit active accent color"/>
-          <TextBlock Text="{Binding SelectedAccentHex}" Classes="muted" FontSize="11" VerticalAlignment="Center"/>
-        </StackPanel>
-        <TextBlock Grid.Column="1" Text="Drag · resize · style · add" Classes="muted" FontSize="11" VerticalAlignment="Center"/>
-      </Grid>
-
-      <Border Classes="panel" Padding="10">
+      <Grid x:Name="DashboardArea" ColumnDefinitions="*,Auto" ColumnSpacing="12" SizeChanged="DashboardArea_SizeChanged">
+      <Border Grid.Column="0" Classes="panel" Padding="10">
         <Border x:Name="WidgetSurface" Height="{Binding DashboardHeight}" MinHeight="280" Background="{DynamicResource ThemeSoftBrush}" CornerRadius="14" SizeChanged="WidgetSurface_SizeChanged" PointerMoved="WidgetSurface_PointerMoved" PointerReleased="WidgetSurface_PointerReleased">
           <ItemsControl ItemsSource="{Binding Widgets}">
             <ItemsControl.Styles>
@@ -124,7 +142,7 @@
                       </Border>
                       <TextBlock Grid.Column="1" Text="{Binding WidgetHeaderTitle}" Foreground="{Binding MutedBrush}" FontSize="{Binding WidgetHeaderFontSize}" FontWeight="Bold" LetterSpacing="1.05" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                       <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                        <controls:ManualColorPicker Width="22" Height="22" SwatchSize="20" SelectedColor="{Binding SelectedColor, Mode=TwoWay}" ColorApplied="WidgetColorApplied" ToolTip.Tip="Card accent color"/>
+                        <controls:ManualColorPicker Width="22" Height="22" SwatchSize="20" SelectedColor="{Binding SelectedColor, Mode=TwoWay}" ColorApplied="WidgetColorApplied" ToolTip.Tip="Card accent color" IsVisible="{Binding ShowInlineAccentPicker}"/>
                         <Button Classes="toolbar-action" Content="{Binding StyleLabel}" Foreground="{Binding MutedBrush}" Padding="6,4">
                           <Button.Flyout>
                             <Flyout>
@@ -147,8 +165,8 @@
                             </Flyout>
                           </Button.Flyout>
                         </Button>
-                        <Button Classes="toolbar-action" Content="{Binding CollapseActionText}" Command="{Binding ToggleCollapseCommand}" Foreground="{Binding MutedBrush}" Padding="6,4" ToolTip.Tip="Collapse or expand card"/>
-                        <Button Classes="toolbar-action" Content="ⓘ" Foreground="{Binding MutedBrush}" Padding="6,4" ToolTip.Tip="What this card shows">
+                        <Button Classes="toolbar-action" Content="{Binding CollapseActionText}" Command="{Binding ToggleCollapseCommand}" Foreground="{Binding MutedBrush}" Padding="6,4" ToolTip.Tip="Collapse or expand card" IsVisible="{Binding ShowInlineCollapse}"/>
+                        <Button Classes="toolbar-action" Content="ⓘ" Foreground="{Binding MutedBrush}" Padding="6,4" ToolTip.Tip="What this card shows" IsVisible="{Binding ShowInlineInfo}">
                           <Button.Flyout><Flyout><Border Width="280" Padding="12" Background="{DynamicResource ThemeWindowBrush}" BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="1" CornerRadius="10"><TextBlock Text="{Binding InfoText}" TextWrapping="Wrap" FontSize="12" LineHeight="17"/></Border></Flyout></Button.Flyout>
                         </Button>
                         <Button Classes="toolbar-action" Content="×" Click="RemoveWidget_Click" Foreground="{Binding MutedBrush}" Padding="6,4" ToolTip.Tip="Remove card"/>
@@ -187,18 +205,31 @@
                       <Grid IsVisible="{Binding IsHistory}" RowDefinitions="Auto,*" RowSpacing="6">
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                           <WrapPanel VerticalAlignment="Center">
-                            <ToggleButton Content="LOAD" IsChecked="{Binding DataContext.ShowHistoryLoad, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,5,4"/>
-                            <ToggleButton Content="TEMP" IsChecked="{Binding DataContext.ShowHistoryTemperature, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,5,4"/>
-                            <ToggleButton Content="CLOCK" IsChecked="{Binding DataContext.ShowHistoryClock, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,5,4"/>
-                            <ToggleButton Content="POWER" IsChecked="{Binding DataContext.ShowHistoryPower, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,5,4"/>
+                            <ToggleButton Classes="cpu-history-toggle" Content="LOAD" IsChecked="{Binding DataContext.ShowHistoryLoad, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,5,4"/>
+                            <ToggleButton Classes="cpu-history-toggle" Content="TEMP" IsChecked="{Binding DataContext.ShowHistoryTemperature, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,5,4"/>
+                            <ToggleButton Classes="cpu-history-toggle" Content="CLOCK" IsChecked="{Binding DataContext.ShowHistoryClock, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,5,4"/>
+                            <ToggleButton Classes="cpu-history-toggle" Content="POWER" IsChecked="{Binding DataContext.ShowHistoryPower, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,5,4"/>
                           </WrapPanel>
                           <ComboBox Grid.Column="1" Width="76" ItemsSource="{Binding DataContext.HistoryRanges, RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding DataContext.HistoryRange, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                         </Grid>
-                        <Grid Grid.Row="1" ClipToBounds="True">
-                          <controls:TelemetryGraph Values="{Binding DataContext.HistoryLoad, RelativeSource={RelativeSource AncestorType=UserControl}}" Stroke="{Binding GraphBrush}" Minimum="0" Maximum="100" ShowGrid="True" IsVisible="{Binding DataContext.ShowHistoryLoad, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
-                          <controls:TelemetryGraph Values="{Binding DataContext.HistoryTemperature, RelativeSource={RelativeSource AncestorType=UserControl}}" Stroke="#D86B24" Minimum="20" Maximum="110" ShowGrid="False" IsVisible="{Binding DataContext.ShowHistoryTemperature, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
-                          <controls:TelemetryGraph Values="{Binding DataContext.HistoryClock, RelativeSource={RelativeSource AncestorType=UserControl}}" Stroke="#7353C6" Minimum="0" Maximum="6000" ShowGrid="False" IsVisible="{Binding DataContext.ShowHistoryClock, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
-                          <controls:TelemetryGraph Values="{Binding DataContext.HistoryPower, RelativeSource={RelativeSource AncestorType=UserControl}}" Stroke="#159A8C" Minimum="0" Maximum="180" ShowGrid="False" IsVisible="{Binding DataContext.ShowHistoryPower, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                        <Grid Grid.Row="1" ColumnDefinitions="25,*" RowDefinitions="*,Auto" ColumnSpacing="4" RowSpacing="3">
+                          <Grid RowDefinitions="*,*,*,*,*" Margin="0,2,0,13">
+                            <TextBlock Text="100" Classes="muted" FontSize="8" VerticalAlignment="Top"/>
+                            <TextBlock Grid.Row="1" Text="75" Classes="muted" FontSize="8" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Row="2" Text="50" Classes="muted" FontSize="8" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Row="3" Text="25" Classes="muted" FontSize="8" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Row="4" Text="0" Classes="muted" FontSize="8" VerticalAlignment="Bottom"/>
+                          </Grid>
+                          <Grid Grid.Column="1" ClipToBounds="True">
+                            <controls:TelemetryGraph Values="{Binding DataContext.HistoryLoad, RelativeSource={RelativeSource AncestorType=UserControl}}" Stroke="{Binding DataContext.HistoryLoadBrush, RelativeSource={RelativeSource AncestorType=UserControl}}" Minimum="0" Maximum="100" ShowGrid="True" IsVisible="{Binding DataContext.ShowHistoryLoad, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                            <controls:TelemetryGraph Values="{Binding DataContext.HistoryTemperature, RelativeSource={RelativeSource AncestorType=UserControl}}" Stroke="{Binding DataContext.HistoryTemperatureBrush, RelativeSource={RelativeSource AncestorType=UserControl}}" Minimum="20" Maximum="110" ShowGrid="False" IsVisible="{Binding DataContext.ShowHistoryTemperature, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                            <controls:TelemetryGraph Values="{Binding DataContext.HistoryClock, RelativeSource={RelativeSource AncestorType=UserControl}}" Stroke="{Binding DataContext.HistoryClockBrush, RelativeSource={RelativeSource AncestorType=UserControl}}" Minimum="0" Maximum="6000" ShowGrid="False" IsVisible="{Binding DataContext.ShowHistoryClock, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                            <controls:TelemetryGraph Values="{Binding DataContext.HistoryPower, RelativeSource={RelativeSource AncestorType=UserControl}}" Stroke="{Binding DataContext.HistoryPowerBrush, RelativeSource={RelativeSource AncestorType=UserControl}}" Minimum="0" Maximum="180" ShowGrid="False" IsVisible="{Binding DataContext.ShowHistoryPower, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                          </Grid>
+                          <ItemsControl Grid.Row="1" Grid.Column="1" ItemsSource="{Binding DataContext.HistoryTicks, RelativeSource={RelativeSource AncestorType=UserControl}}" Height="13">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="6"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Classes="muted" FontSize="8" HorizontalAlignment="Center"/></DataTemplate></ItemsControl.ItemTemplate>
+                          </ItemsControl>
                         </Grid>
                       </Grid>
 
@@ -270,6 +301,33 @@
           </ItemsControl>
         </Border>
       </Border>
+      <Border Grid.Column="1" Classes="panel" Width="230" Padding="12" VerticalAlignment="Top" IsVisible="{Binding IsWidgetLibraryVisible}">
+        <StackPanel Spacing="9">
+          <StackPanel Spacing="3">
+            <TextBlock Text="WIDGET LIBRARY" Classes="eyebrow" FontSize="10"/>
+            <TextBlock Text="Add hidden cards to your workspace." Classes="muted" FontSize="10" TextWrapping="Wrap"/>
+          </StackPanel>
+          <ScrollViewer MaxHeight="510" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding WidgetLibrary}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5" Margin="0,0,0,5">
+                    <StackPanel Spacing="1" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Title}" FontSize="10" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Text="{Binding Summary}" Classes="muted" FontSize="8" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="toolbar-action" Content="{Binding ActionText}" Command="{Binding AddCommand}" IsEnabled="{Binding CanAdd}" VerticalAlignment="Center" ToolTip.Tip="Add this card"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <Border Background="{DynamicResource ThemeSoftBrush}" CornerRadius="8" Padding="8">
+            <TextBlock Text="Drag cards by the grip. Resize from ↘. Layout saves automatically." Classes="muted" FontSize="9" TextWrapping="Wrap"/>
+          </Border>
+        </StackPanel>
+      </Border>
+      </Grid>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

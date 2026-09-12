@@ -18,6 +18,19 @@ public partial class CpuModuleView : UserControl
     public CpuModuleView()
     {
         InitializeComponent();
+        DataContextChanged += (_, _) => UpdateLibraryVisibility();
+    }
+
+    private void DashboardArea_SizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (DataContext is CpuModuleViewModel viewModel)
+            viewModel.SetWidgetLibraryVisible(e.NewSize.Width >= 1250);
+    }
+
+    private void UpdateLibraryVisibility()
+    {
+        if (DataContext is CpuModuleViewModel viewModel)
+            viewModel.SetWidgetLibraryVisible(DashboardArea.Bounds.Width >= 1250);
     }
 
     private void WidgetDrag_PointerPressed(object? sender, PointerPressedEventArgs e)
