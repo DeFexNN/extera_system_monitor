@@ -5,7 +5,7 @@
              x:Class="ExteraMonitor.Views.Modules.CpuModuleView"
              x:CompileBindings="False">
   <UserControl.Styles>
-    <Style Selector="ToggleButton.cpu-history-toggle">
+    <Style Selector="Button.cpu-history-toggle">
       <Setter Property="Background" Value="{DynamicResource ThemeWindowBrush}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource ThemeSoftBrush}"/>
       <Setter Property="BorderThickness" Value="1"/>
@@ -14,23 +14,23 @@
       <Setter Property="Padding" Value="8,4"/>
       <Setter Property="MinHeight" Value="26"/>
     </Style>
-    <Style Selector="ToggleButton.cpu-history-toggle:checked">
+    <Style Selector="Button.cpu-history-toggle.active">
       <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
       <Setter Property="Foreground" Value="{DynamicResource ThemeWindowBrush}"/>
     </Style>
-    <Style Selector="ToggleButton.cpu-history-toggle:pointerover">
+    <Style Selector="Button.cpu-history-toggle:pointerover">
       <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
     </Style>
-    <Style Selector="ToggleButton.cpu-history-toggle:checked:pointerover">
+    <Style Selector="Button.cpu-history-toggle.active:pointerover">
       <Setter Property="Background" Value="{DynamicResource ThemeChromeBrush}"/>
       <Setter Property="Foreground" Value="{DynamicResource ThemeWindowBrush}"/>
     </Style>
   </UserControl.Styles>
   <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-    <StackPanel Margin="24,20,24,28" Spacing="12">
+    <StackPanel Margin="24,4,24,28" Spacing="8">
       <WrapPanel>
-        <StackPanel Width="430" Margin="0,0,16,8" Spacing="3" VerticalAlignment="Center">
+        <StackPanel Width="650" Margin="0,0,16,8" Spacing="3" VerticalAlignment="Center">
           <TextBlock Text="CPU" FontSize="30" FontWeight="SemiBold"/>
           <TextBlock Text="Monitor your processor in real time. Drag, style and resize the cards to build your workspace." Classes="muted" FontSize="13" TextWrapping="Wrap"/>
         </StackPanel>
@@ -205,10 +205,10 @@
                       <Grid IsVisible="{Binding IsHistory}" RowDefinitions="Auto,*" RowSpacing="6">
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                           <WrapPanel VerticalAlignment="Center">
-                            <ToggleButton Classes="cpu-history-toggle" Content="LOAD" IsChecked="{Binding DataContext.ShowHistoryLoad, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,5,4"/>
-                            <ToggleButton Classes="cpu-history-toggle" Content="TEMP" IsChecked="{Binding DataContext.ShowHistoryTemperature, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,5,4"/>
-                            <ToggleButton Classes="cpu-history-toggle" Content="CLOCK" IsChecked="{Binding DataContext.ShowHistoryClock, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,5,4"/>
-                            <ToggleButton Classes="cpu-history-toggle" Content="POWER" IsChecked="{Binding DataContext.ShowHistoryPower, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,5,4"/>
+                            <Button Classes="cpu-history-toggle" Classes.active="{Binding DataContext.ShowHistoryLoad, RelativeSource={RelativeSource AncestorType=UserControl}}" Content="LOAD" Tag="Load" Click="HistorySeries_Click" Margin="0,0,5,4"/>
+                            <Button Classes="cpu-history-toggle" Classes.active="{Binding DataContext.ShowHistoryTemperature, RelativeSource={RelativeSource AncestorType=UserControl}}" Content="TEMP" Tag="Temperature" Click="HistorySeries_Click" Margin="0,0,5,4"/>
+                            <Button Classes="cpu-history-toggle" Classes.active="{Binding DataContext.ShowHistoryClock, RelativeSource={RelativeSource AncestorType=UserControl}}" Content="CLOCK" Tag="Clock" Click="HistorySeries_Click" Margin="0,0,5,4"/>
+                            <Button Classes="cpu-history-toggle" Classes.active="{Binding DataContext.ShowHistoryPower, RelativeSource={RelativeSource AncestorType=UserControl}}" Content="POWER" Tag="Power" Click="HistorySeries_Click" Margin="0,0,5,4"/>
                           </WrapPanel>
                           <ComboBox Grid.Column="1" Width="76" ItemsSource="{Binding DataContext.HistoryRanges, RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding DataContext.HistoryRange, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                         </Grid>
@@ -234,28 +234,28 @@
                       </Grid>
 
                       <StackPanel IsVisible="{Binding IsPower}" Spacing="7" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding DataContext.Telemetry.PackagePower, RelativeSource={RelativeSource AncestorType=UserControl}}" Foreground="{Binding TextBrush}" FontSize="28" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding DataContext.Telemetry.PackagePower, RelativeSource={RelativeSource AncestorType=UserControl}}" Foreground="{Binding TextBrush}" FontSize="22" FontWeight="SemiBold"/>
                         <ItemsControl ItemsSource="{Binding DataContext.Telemetry.PowerSummaryRows, RelativeSource={RelativeSource AncestorType=UserControl}}">
-                          <ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="*,Auto" Margin="0,2"><TextBlock Text="{Binding Label}" Classes="muted" FontSize="11"/><TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="11"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
+                          <ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="*,Auto" Margin="0,1"><TextBlock Text="{Binding Label}" Classes="muted" FontSize="10"/><TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="10"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
                         </ItemsControl>
                       </StackPanel>
 
-                      <StackPanel IsVisible="{Binding IsVoltage}" Spacing="7" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding DataContext.Telemetry.CoreVoltage, RelativeSource={RelativeSource AncestorType=UserControl}}" Foreground="{Binding TextBrush}" FontSize="26" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding DataContext.Telemetry.VoltageRange, RelativeSource={RelativeSource AncestorType=UserControl}}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
-                        <controls:TelemetryGraph Height="34" Values="{Binding DataContext.Telemetry.VoltageHistory, RelativeSource={RelativeSource AncestorType=UserControl}}" Stroke="{Binding GraphBrush}" Minimum="0.5" Maximum="1.8"/>
+                      <StackPanel IsVisible="{Binding IsVoltage}" Spacing="4" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding DataContext.Telemetry.CoreVoltage, RelativeSource={RelativeSource AncestorType=UserControl}}" Foreground="{Binding TextBrush}" FontSize="22" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding DataContext.Telemetry.VoltageRange, RelativeSource={RelativeSource AncestorType=UserControl}}" Classes="muted" FontSize="10" TextWrapping="Wrap"/>
+                        <controls:TelemetryGraph Height="22" Values="{Binding DataContext.Telemetry.VoltageHistory, RelativeSource={RelativeSource AncestorType=UserControl}}" Stroke="{Binding GraphBrush}" Minimum="0.5" Maximum="1.8"/>
                       </StackPanel>
 
                       <ItemsControl IsVisible="{Binding IsTemperatures}" ItemsSource="{Binding DataContext.Telemetry.TemperatureSummaryRows, RelativeSource={RelativeSource AncestorType=UserControl}}" VerticalAlignment="Center">
-                        <ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,3"><TextBlock Text="{Binding Label}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis"/><TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="11"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
+                        <ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,2"><TextBlock Text="{Binding Label}" Classes="muted" FontSize="10" TextTrimming="CharacterEllipsis"/><TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="10"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
                       </ItemsControl>
 
                       <ItemsControl IsVisible="{Binding IsPowerLimits}" ItemsSource="{Binding DataContext.Telemetry.PowerLimits, RelativeSource={RelativeSource AncestorType=UserControl}}" VerticalAlignment="Center">
-                        <ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="36,*,Auto" ColumnSpacing="7" Margin="0,4"><TextBlock Text="{Binding Label}" Classes="eyebrow" FontSize="10"/><ProgressBar Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Percent}" Height="7" VerticalAlignment="Center" IsVisible="{Binding HasProgress}"/><TextBlock Grid.Column="2" Text="{Binding Value}" FontSize="10"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
+                        <ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="36,*,Auto" ColumnSpacing="7" Margin="0,2"><TextBlock Text="{Binding Label}" Classes="eyebrow" FontSize="9"/><ProgressBar Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Percent}" Height="6" VerticalAlignment="Center" IsVisible="{Binding HasProgress}"/><TextBlock Grid.Column="2" Text="{Binding Value}" FontSize="9"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
                       </ItemsControl>
 
                       <ItemsControl IsVisible="{Binding IsFrequency}" ItemsSource="{Binding DataContext.Telemetry.FrequencyBands, RelativeSource={RelativeSource AncestorType=UserControl}}" VerticalAlignment="Center">
-                        <ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="54,*,Auto" ColumnSpacing="7" Margin="0,3"><TextBlock Text="{Binding Label}" Classes="muted" FontSize="10"/><ProgressBar Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Percent}" Height="7" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding Value}" FontSize="10"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
+                        <ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="54,*,Auto" ColumnSpacing="7" Margin="0,2"><TextBlock Text="{Binding Label}" Classes="muted" FontSize="9"/><ProgressBar Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Percent}" Height="6" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding Value}" FontSize="9"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
                       </ItemsControl>
 
                       <ItemsControl IsVisible="{Binding IsCStates}" ItemsSource="{Binding DataContext.Telemetry.CStates, RelativeSource={RelativeSource AncestorType=UserControl}}" VerticalAlignment="Center">
@@ -287,7 +287,7 @@
                         <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto" IsVisible="{Binding DataContext.SensorsExpanded, RelativeSource={RelativeSource AncestorType=UserControl}}">
                           <ItemsControl ItemsSource="{Binding DataContext.Telemetry.AllSensors, RelativeSource={RelativeSource AncestorType=UserControl}}"><ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,2"><TextBlock Text="{Binding Label}" FontSize="10" TextTrimming="CharacterEllipsis"/><TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="10"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
                         </ScrollViewer>
-                        <Button Content="{Binding DataContext.SensorsToggleText, RelativeSource={RelativeSource AncestorType=UserControl}}" Classes="toolbar-action" HorizontalAlignment="Left" Click="SensorsToggle_Click"/>
+                        <Button Content="{Binding DataContext.SensorsToggleText, RelativeSource={RelativeSource AncestorType=UserControl}}" Classes="toolbar-action" Foreground="{Binding MutedBrush}" HorizontalAlignment="Left" Click="SensorsToggle_Click"/>
                       </StackPanel>
                     </Grid>
 
@@ -316,7 +316,8 @@
                       <TextBlock Text="{Binding Title}" FontSize="10" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
                       <TextBlock Text="{Binding Summary}" Classes="muted" FontSize="8" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
-                    <Button Grid.Column="1" Classes="toolbar-action" Content="{Binding ActionText}" Command="{Binding AddCommand}" IsEnabled="{Binding CanAdd}" VerticalAlignment="Center" ToolTip.Tip="Add this card"/>
+                    <Button Grid.Column="1" Classes="toolbar-action" Content="ADD" Foreground="{DynamicResource ThemeChromeBrush}" Command="{Binding AddCommand}" IsVisible="{Binding CanAdd}" VerticalAlignment="Center" ToolTip.Tip="Add this card"/>
+                    <Border Grid.Column="1" Background="{DynamicResource ThemeSoftBrush}" CornerRadius="5" Padding="5,3" IsVisible="{Binding IsAdded}" VerticalAlignment="Center"><TextBlock Text="ADDED" Foreground="{DynamicResource ThemeAccentBrush}" FontSize="8" FontWeight="Bold"/></Border>
                   </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>

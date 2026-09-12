@@ -26,12 +26,13 @@ public sealed class SqliteMetricsHistoryRepository : IMetricsHistoryRepository, 
     private readonly string _connectionString;
     public string DatabasePath { get; }
 
-    public SqliteMetricsHistoryRepository()
+    public SqliteMetricsHistoryRepository(bool readOnly = false)
     {
         var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ExteraMonitor");
-        Directory.CreateDirectory(directory); DatabasePath = Path.Combine(directory, "metrics-history.db");
-        _connectionString = new SqliteConnectionStringBuilder { DataSource = DatabasePath, Mode = SqliteOpenMode.ReadWriteCreate }.ToString();
-        Initialize();
+        if (!readOnly) Directory.CreateDirectory(directory);
+        DatabasePath = Path.Combine(directory, "metrics-history.db");
+        _connectionString = new SqliteConnectionStringBuilder { DataSource = DatabasePath, Mode = readOnly ? SqliteOpenMode.ReadOnly : SqliteOpenMode.ReadWriteCreate }.ToString();
+        if (!readOnly) Initialize();
     }
 
     public void Store(SystemSnapshot snapshot)

@@ -9,10 +9,10 @@ namespace ExteraMonitor.ViewModels.Modules;
 public sealed class CpuWidgetViewModel : ViewModelBase
 {
     public const double MinimumWidth = 170;
-    public const double MinimumHeight = 132;
+    public const double MinimumHeight = 144;
 
     private double _x, _y, _width, _height;
-    private int _gridColumn, _gridRow, _gridColumnSpan = 3, _gridRowSpan = 2;
+    private int _gridColumn, _gridRow, _gridColumnSpan = 3, _gridRowSpan = 2, _expandedGridRowSpan = 2;
     private int _style = 1;
     private string _valueText = "—";
     private string _statMinimum = "N/A", _statAverage = "N/A", _statMaximum = "N/A";
@@ -58,11 +58,13 @@ public sealed class CpuWidgetViewModel : ViewModelBase
         get => _gridRowSpan;
         set
         {
-            if (!SetProperty(ref _gridRowSpan, Math.Clamp(value, 1, 8))) return;
+            var normalized = Math.Clamp(value, 0, 8);
+            if (normalized > 0) _expandedGridRowSpan = normalized;
+            if (!SetProperty(ref _gridRowSpan, normalized)) return;
             OnPropertyChanged(nameof(IsCollapsed)); OnPropertyChanged(nameof(IsExpanded)); OnPropertyChanged(nameof(CollapseActionText));
         }
     }
-    public bool IsCollapsed => GridRowSpan == 1;
+    public bool IsCollapsed => GridRowSpan == 0;
     public bool IsExpanded => !IsCollapsed;
     public string CollapseActionText => IsCollapsed ? "＋" : "−";
     public int CoreColumnCount
@@ -147,7 +149,7 @@ public sealed class CpuWidgetViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedColor)); OnPropertyChanged(nameof(AccentColorHex)); NotifyVisuals();
     }
 
-    public void Update(SystemSnapshot snapshot, IReadOnlyList<double> cpuValues, IReadOnlyList<double> temperatureValues, CpuTelemetryViewModel telemetry)
+    public void Update(SystemSnapshot snapshot, IReadOnlyList<double> cpuValues, IReadOnlyList<double> temperatureValues, CpuTelemetryViewModel telemetry, bool cpuUsageValid = true)
     {
         if (IsCores)
         {
@@ -166,7 +168,7 @@ public sealed class CpuWidgetViewModel : ViewModelBase
         switch (Kind)
         {
             case "Load":
-                ValueText = $"{snapshot.CpuUsage:0.0}%"; SetStats(valid, value => $"{value:0.0}%");
+                ValueText = cpuUsageValid ? $"{snapshot.CpuUsage:0.0}%" : "N/A"; SetStats(valid, value => $"{value:0.0}%");
                 InfoText = "Total processor utilization across all logical processors. History uses live samples from Windows."; break;
             case "Temperature":
                 ValueText = snapshot.CpuTemperature > 0 ? $"{snapshot.CpuTemperature:0.0}°C" : "N/A"; SetStats(valid, value => $"{value:0.0}°C");
@@ -194,7 +196,7 @@ public sealed class CpuWidgetViewModel : ViewModelBase
     }
 
     private void CycleStyle() { var options = StyleOptions; var index = Array.IndexOf(options.ToArray(), Style); Style = options[(index + 1) % options.Count]; }
-    private void ToggleCollapse() { GridRowSpan = IsCollapsed ? (Kind is "Cores" or "History" ? 2 : Kind == "PerCore" ? 3 : 1) : 1; Changed?.Invoke(); }
+    private void ToggleCollapse() { GridRowSpan = IsCollapsed ? _expandedGridRowSpan : 0; Changed?.Invoke(); }
     private void AddStyle() { var next = Styles.Count == 0 ? 1 : Styles.Max(style => style.Index) + 1; var style = ActiveStyle.Clone(next); style.Changed = StyleChanged; Styles.Add(style); OnPropertyChanged(nameof(StyleOptions)); Style = next; Changed?.Invoke(); }
     private void StyleChanged() { NotifyVisuals(); }
     private void NotifyVisuals()

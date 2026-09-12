@@ -4,7 +4,7 @@
              x:Name="PickerRoot">
   <Grid>
     <Button x:Name="SwatchButton" Width="{Binding SwatchSize, ElementName=PickerRoot}" Height="{Binding SwatchSize, ElementName=PickerRoot}" Padding="2" Background="Transparent" BorderBrush="Transparent" BorderThickness="0" Click="SwatchButton_Click">
-      <Border x:Name="SwatchBorder" CornerRadius="14" BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="1"/>
+      <Border x:Name="SwatchBorder" Background="{Binding SwatchBrush, ElementName=PickerRoot}" CornerRadius="14" BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="1"/>
     </Button>
     <Popup x:Name="PickerPopup" PlacementTarget="{Binding ElementName=SwatchButton}" IsLightDismissEnabled="True" HorizontalOffset="8" VerticalOffset="6">
       <Border Background="{DynamicResource ThemeWindowBrush}" BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="1" CornerRadius="12" Padding="14" Width="270">

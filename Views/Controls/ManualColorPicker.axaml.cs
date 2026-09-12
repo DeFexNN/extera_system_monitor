@@ -10,6 +10,7 @@ public partial class ManualColorPicker : UserControl
 {
     public static readonly StyledProperty<Color> SelectedColorProperty = AvaloniaProperty.Register<ManualColorPicker, Color>(nameof(SelectedColor), Colors.Teal, defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
     public static readonly StyledProperty<double> SwatchSizeProperty = AvaloniaProperty.Register<ManualColorPicker, double>(nameof(SwatchSize), 32);
+    public static readonly StyledProperty<IBrush> SwatchBrushProperty = AvaloniaProperty.Register<ManualColorPicker, IBrush>(nameof(SwatchBrush), new SolidColorBrush(Colors.Teal));
 
     private double _hue;
     private double _saturation;
@@ -32,9 +33,16 @@ public partial class ManualColorPicker : UserControl
         set => SetValue(SwatchSizeProperty, value);
     }
 
+    public IBrush SwatchBrush
+    {
+        get => GetValue(SwatchBrushProperty);
+        private set => SetValue(SwatchBrushProperty, value);
+    }
+
     public ManualColorPicker()
     {
         InitializeComponent();
+        SwatchBrush = new SolidColorBrush(SelectedColor);
         SyncFromColor();
         UpdateEditor();
     }
@@ -51,6 +59,7 @@ public partial class ManualColorPicker : UserControl
         base.OnPropertyChanged(change);
         if (change.Property == SelectedColorProperty && !_updating)
         {
+            SwatchBrush = new SolidColorBrush(SelectedColor);
             SyncFromColor();
             UpdateEditor();
         }
@@ -154,7 +163,6 @@ public partial class ManualColorPicker : UserControl
         _updating = true;
         var hueColor = HsvColor.FromHsv(_hue, 1, 1).ToRgb();
         SpectrumHueLayer.Background = new SolidColorBrush(hueColor);
-        SwatchBorder.Background = new SolidColorBrush(SelectedColor);
         PreviewBorder.Background = new SolidColorBrush(SelectedColor);
         HexBox.Text = ToHex(SelectedColor);
 

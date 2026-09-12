@@ -148,6 +148,8 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
     private string _historyRange = "10m";
     private double _lastSurfaceWidth;
     private bool _isWidgetLibraryVisible;
+    private bool _suspendCustomizationPersistence;
+    private bool _receivedCpuUsageBaseline;
     private bool _showHistoryLoad = true, _showHistoryTemperature = true, _showHistoryClock = true, _showHistoryPower = true;
     private bool _sensorsExpanded;
 
@@ -266,7 +268,7 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
 
     public void SetWidgetLibraryVisible(bool visible) => IsWidgetLibraryVisible = visible;
 
-    public void LoadCustomization(ICpuCustomizationRepository repository)
+    public void LoadCustomization(ICpuCustomizationRepository repository, bool persistNormalization = true)
     {
         _customizationRepository = repository;
         var settings = repository.LoadCpuCustomization();
@@ -327,11 +329,12 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
         OnPropertyChanged(nameof(SensorsExpanded)); OnPropertyChanged(nameof(SensorsCollapsed));
         SelectedAccentPreset = Accents.Any(accent => accent.Name == _selectedAccentPreset) ? _selectedAccentPreset : "TEAL";
         OnPropertyChanged(nameof(HistoryTemperatureBrush)); OnPropertyChanged(nameof(HistoryClockBrush)); OnPropertyChanged(nameof(HistoryPowerBrush));
-        SaveCustomization();
+        if (persistNormalization) SaveCustomization();
     }
 
     public void SaveCustomization()
     {
+        if (_suspendCustomizationPersistence) return;
         _customizationRepository?.SaveCpuCustomization(new CpuCustomizationSettings(
             Widgets.Select(widget => new CpuWidgetLayout(widget.Kind, widget.GridColumn, widget.GridRow, widget.GridColumnSpan, widget.GridRowSpan, widget.Style, widget.AccentColorHex)).ToList(),
             Accents.ToDictionary(accent => accent.Name, accent => accent.HexText, StringComparer.OrdinalIgnoreCase),
@@ -339,6 +342,13 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
             string.Join(',', new[] { ShowHistoryLoad ? "Load" : null, ShowHistoryTemperature ? "Temp" : null, ShowHistoryClock ? "Clock" : null, ShowHistoryPower ? "Power" : null }.Where(value => value is not null)),
             HistoryRange,
             SensorsExpanded));
+    }
+
+    public void ResetLayoutForPreview()
+    {
+        _suspendCustomizationPersistence = true;
+        try { ResetLayout(); }
+        finally { _suspendCustomizationPersistence = false; }
     }
 
     public void ResetCustomization()
@@ -359,17 +369,19 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
 
     public override void Update(SystemSnapshot s)
     {
-        Usage = s.CpuUsage;
+        var cpuUsageValid = _receivedCpuUsageBaseline || s.CpuUsage > 0;
+        _receivedCpuUsageBaseline = true;
+        if (cpuUsageValid) Usage = s.CpuUsage;
         Temperature = s.CpuTemperature;
         TemperatureSource = s.TemperatureSource;
         Telemetry.Update(s);
-        Append(CpuHistory, s.CpuUsage);
+        if (cpuUsageValid) Append(CpuHistory, s.CpuUsage);
         if (s.CpuTemperature > 0) Append(TemperatureHistory, s.CpuTemperature);
         CoreLoads.Clear();
         foreach (var core in s.Cores) CoreLoads.Add(new CoreLoadViewModel(core));
         var cpuValues = CpuHistory.ToArray();
         var temperatureValues = TemperatureHistory.ToArray();
-        foreach (var widget in Widgets) widget.Update(s, cpuValues, temperatureValues, Telemetry);
+        foreach (var widget in Widgets) widget.Update(s, cpuValues, temperatureValues, Telemetry, cpuUsageValid);
         ObservableCollectionReconciler.SetItems(SensorPreview, Telemetry.AllSensors.Take(6).ToArray());
         OnPropertyChanged(nameof(HiddenSensorCount)); OnPropertyChanged(nameof(SensorsHeader)); OnPropertyChanged(nameof(SensorsToggleText));
         OnPropertyChanged(nameof(HistoryLoad)); OnPropertyChanged(nameof(HistoryTemperature)); OnPropertyChanged(nameof(HistoryClock)); OnPropertyChanged(nameof(HistoryPower));
@@ -446,15 +458,30 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
             Mark(occupied, column, row, span, rows);
             placements.Add((widget, column, row, span, rows));
         }
+        var placedBounds = new List<(double X, double Y, double Width, double Height)>();
         var bottom = 0d;
         foreach (var item in placements)
         {
             var cardWidth = item.Span * cellWidth + (item.Span - 1) * gap;
             var cardHeight = item.Rows * rowUnit + (item.Rows - 1) * gap;
-            item.Widget.X = margin + item.Column * (cellWidth + gap);
-            item.Widget.Y = margin + item.Row * (rowUnit + gap);
-            item.Widget.Width = Math.Max(CpuWidgetViewModel.MinimumWidth, cardWidth);
-            item.Widget.Height = Math.Max(CpuWidgetViewModel.MinimumHeight, cardHeight);
+            var x = margin + item.Column * (cellWidth + gap);
+            var width = Math.Max(CpuWidgetViewModel.MinimumWidth, cardWidth);
+            var height = Math.Max(CpuWidgetViewModel.MinimumHeight, cardHeight);
+            var y = margin + item.Row * (rowUnit + gap);
+            while (true)
+            {
+                var blockers = placedBounds.Where(rect =>
+                    x < rect.X + rect.Width && x + width > rect.X &&
+                    y < rect.Y + rect.Height && y + height > rect.Y).ToArray();
+                if (blockers.Length == 0) break;
+                y = blockers.Max(rect => rect.Y + rect.Height) + gap;
+            }
+
+            item.Widget.X = x;
+            item.Widget.Y = y;
+            item.Widget.Width = width;
+            item.Widget.Height = height;
+            placedBounds.Add((x, y, width, height));
             bottom = Math.Max(bottom, item.Widget.Y + item.Widget.Height);
         }
         DashboardHeight = bottom + margin;
@@ -474,7 +501,8 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
             widget.GridColumn = Math.Clamp((int)Math.Round((widget.X - margin) / (cellWidth + gap) * 12d / columns), 0, 11);
             widget.GridRow = Math.Max(0, (int)Math.Round((widget.Y - margin) / (rowUnit + gap)));
             widget.GridColumnSpan = Math.Clamp((int)Math.Round(widget.Width / (cellWidth + gap) * 12d / columns), 1, 12);
-            widget.GridRowSpan = Math.Clamp((int)Math.Round(widget.Height / (rowUnit + gap)), 1, 8);
+            if (!widget.IsCollapsed)
+                widget.GridRowSpan = Math.Clamp((int)Math.Round(widget.Height / (rowUnit + gap)), 1, 8);
         }
         SaveCustomization();
     }
@@ -517,7 +545,7 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
     {
         var placement = DefaultGrid(widget.Kind);
         widget.GridColumn = 0;
-        widget.GridRow = Widgets.Select(item => item.GridRow + item.GridRowSpan).DefaultIfEmpty(0).Max();
+        widget.GridRow = Widgets.Select(item => item.GridRow + Math.Max(1, item.GridRowSpan)).DefaultIfEmpty(0).Max();
         widget.GridColumnSpan = placement.ColumnSpan;
         widget.GridRowSpan = placement.RowSpan;
     }

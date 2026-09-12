@@ -1,5 +1,9 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
+using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using ExteraMonitor.ViewModels;
 
 namespace ExteraMonitor.Views;
@@ -27,6 +31,43 @@ public partial class MainWindow : Window
                 else if (_overlayWindow.IsVisible) _overlayWindow.Hide();
             },
             topmost => { if (_overlayWindow is not null) _overlayWindow.Topmost = topmost; });
+
+        if (Program.CpuCapturePath is { } capturePath)
+            _ = CaptureCpuProofAsync(capturePath);
+    }
+
+    private async Task CaptureCpuProofAsync(string path)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(25);
+        while (DataContext is MainViewModel viewModel && viewModel.LastUpdated == "WAITING FOR FIRST SAMPLE" && DateTime.UtcNow < deadline)
+            await Task.Delay(250);
+        await Task.Delay(2500);
+
+        try
+        {
+            var savedPath = await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                var scale = RenderScaling;
+                var pixelSize = new PixelSize(
+                    Math.Max(1, (int)Math.Ceiling(Bounds.Width * scale)),
+                    Math.Max(1, (int)Math.Ceiling(Bounds.Height * scale)));
+                using var bitmap = new RenderTargetBitmap(pixelSize, new Vector(96 * scale, 96 * scale));
+                bitmap.Render(this);
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                bitmap.Save(path, PngBitmapEncoderOptions.Default);
+                return path;
+            }, DispatcherPriority.Render);
+
+            Console.WriteLine($"CPU screenshot saved: {savedPath}");
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
+                lifetime.Shutdown(0);
+        }
+        catch (Exception exception)
+        {
+            Console.Error.WriteLine($"CPU screenshot failed: {exception.Message}");
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
+                lifetime.Shutdown(-1);
+        }
     }
 
     private void MainWindow_Closed(object? sender, EventArgs e)

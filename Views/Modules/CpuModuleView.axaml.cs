@@ -140,4 +140,16 @@ public partial class CpuModuleView : UserControl
         viewModel.SensorsExpanded = !viewModel.SensorsExpanded;
         viewModel.ResizeWidgets(WidgetSurface.Bounds.Width, WidgetSurface.Bounds.Height);
     }
+
+    private void HistorySeries_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not CpuModuleViewModel viewModel || sender is not Control { Tag: string series }) return;
+        switch (series)
+        {
+            case "Load": viewModel.ShowHistoryLoad = !viewModel.ShowHistoryLoad; break;
+            case "Temperature": viewModel.ShowHistoryTemperature = !viewModel.ShowHistoryTemperature; break;
+            case "Clock": viewModel.ShowHistoryClock = !viewModel.ShowHistoryClock; break;
+            case "Power": viewModel.ShowHistoryPower = !viewModel.ShowHistoryPower; break;
+        }
+    }
 }

@@ -7,7 +7,7 @@ using ExteraMonitor.ViewModels.Modules;
 namespace ExteraMonitor.ViewModels;
 public sealed class MainViewModel : ViewModelBase
 {
-    private readonly ISystemMetricsProvider _provider; private readonly IMetricsHistoryRepository _history; private readonly DispatcherTimer _timer; private readonly Dictionary<string, ViewModelBase> _modules; private DateTime? _updated; private string _active = "Overview"; private bool _live = true; private ViewModelBase _activeModule = null!; private int _refreshInProgress;
+    private readonly ISystemMetricsProvider _provider; private readonly IMetricsHistoryRepository _history; private readonly bool _persistUserData; private readonly DispatcherTimer _timer; private readonly Dictionary<string, ViewModelBase> _modules; private DateTime? _updated; private string _active = "Overview"; private bool _live = true; private ViewModelBase _activeModule = null!; private int _refreshInProgress;
     public OverviewModuleViewModel Overview { get; } = new(); public CpuModuleViewModel Cpu { get; } = new(); public MemoryModuleViewModel Memory { get; } = new(); public StorageModuleViewModel Storage { get; } = new(); public NetworkModuleViewModel Network { get; } = new(); public ProcessModuleViewModel Processes { get; } = new(); public OverlayModuleViewModel Overlay { get; } = new(); public SoftwareModuleViewModel Software { get; } = new(); public SensorsModuleViewModel Sensors { get; } = new(); public DriverModuleViewModel Driver { get; } = new(); public SettingsModuleViewModel Settings { get; }
     public ObservableCollection<NavigationItem> Navigation { get; } = new() { new("Overview", "⌂", true), new("CPU", "◒"), new("Memory", "▤"), new("Storage", "◫"), new("Network", "↗"), new("Processes", "≡"), new("Sensors", "°"), new("Driver", "⌁"), new("Settings", "⚙"), new("Overlay", "▣"), new("Software", "⊞") };
     public ViewModelBase ActiveModule { get => _activeModule; private set => SetProperty(ref _activeModule, value); }
@@ -20,7 +20,31 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand SelectSectionCommand { get; } public ICommand ToggleLiveCommand { get; }
     public MainViewModel() : this(SystemMetricsProviderFactory.Create(), new SqliteMetricsHistoryRepository()) { }
     public MainViewModel(ISystemMetricsProvider provider) : this(provider, new SqliteMetricsHistoryRepository()) { }
-    public MainViewModel(ISystemMetricsProvider provider, IMetricsHistoryRepository history) { _provider = provider; _history = history; Settings = new SettingsModuleViewModel(); if (_history is ICpuCustomizationRepository customization) { try { Cpu.LoadCustomization(customization); } catch (Exception) { } } if (_history is IThemePaletteRepository theme) { try { Settings.Load(theme); } catch (Exception) { } } _modules = new() { ["Overview"] = Overview, ["CPU"] = Cpu, ["Memory"] = Memory, ["Storage"] = Storage, ["Network"] = Network, ["Processes"] = Processes, ["Sensors"] = Sensors, ["Driver"] = Driver, ["Settings"] = Settings, ["Overlay"] = Overlay, ["Software"] = Software }; _activeModule = Overview; SelectSectionCommand = new RelayCommand(p => ActiveSection = p?.ToString() ?? "Overview"); ToggleLiveCommand = new RelayCommand(_ => IsLive = !IsLive); _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) }; _timer.Tick += (_, _) => RefreshAsync(); RefreshAsync(); _timer.Start(); }
+    public MainViewModel(ISystemMetricsProvider provider, IMetricsHistoryRepository history, bool persistUserData = true)
+    {
+        _provider = provider;
+        _history = history;
+        _persistUserData = persistUserData;
+        Settings = new SettingsModuleViewModel();
+        if (_history is ICpuCustomizationRepository customization)
+        {
+            try { Cpu.LoadCustomization(customization, persistUserData); }
+            catch (Exception) { }
+        }
+        if (_history is IThemePaletteRepository theme)
+        {
+            try { Settings.Load(theme); }
+            catch (Exception) { }
+        }
+        _modules = new() { ["Overview"] = Overview, ["CPU"] = Cpu, ["Memory"] = Memory, ["Storage"] = Storage, ["Network"] = Network, ["Processes"] = Processes, ["Sensors"] = Sensors, ["Driver"] = Driver, ["Settings"] = Settings, ["Overlay"] = Overlay, ["Software"] = Software };
+        _activeModule = Overview;
+        SelectSectionCommand = new RelayCommand(p => ActiveSection = p?.ToString() ?? "Overview");
+        ToggleLiveCommand = new RelayCommand(_ => IsLive = !IsLive);
+        _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _timer.Tick += (_, _) => RefreshAsync();
+        RefreshAsync();
+        _timer.Start();
+    }
 
     private async void RefreshAsync()
     {
@@ -30,7 +54,8 @@ public sealed class MainViewModel : ViewModelBase
             // Sensor enumeration, process enumeration and SQLite writes can block.
             // Keep all of that off Avalonia's UI thread so minimize/restore stays responsive.
             var snapshot = await Task.Run(_provider.GetSnapshot).ConfigureAwait(false);
-            try { _history.Store(snapshot); } catch (Exception) { }
+            if (_persistUserData)
+                try { _history.Store(snapshot); } catch (Exception) { }
             await Dispatcher.UIThread.InvokeAsync(() => ApplySnapshot(snapshot));
         }
         catch (Exception)

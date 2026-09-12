@@ -40,8 +40,8 @@ public sealed class CpuTelemetryViewModel : ViewModelBase
     public string CcdTemperature { get; private set; } = "N/A";
     public string CoreTemperature { get; private set; } = "N/A";
     public string CpuName => _cpuName;
-    public string CpuInfoLine => string.IsNullOrWhiteSpace(_cpuName) ? "CPU information unavailable" : $"{_cpuName} • {_coreCount} cores / {_threadCount} threads";
-    public string CpuPlatformLine => string.Join(" • ", new[] { _architecture, _manufacturer }.Where(item => !string.IsNullOrWhiteSpace(item)));
+    public string CpuInfoLine => string.IsNullOrWhiteSpace(_cpuName) ? "CPU information unavailable" : _cpuName;
+    public string CpuPlatformLine => string.Join(" • ", new[] { $"{_coreCount} cores / {_threadCount} threads", _architecture, _manufacturer }.Where(item => !string.IsNullOrWhiteSpace(item)));
     public string CpuClockLine => _cpuInfo is null ? "Clock information unavailable" : $"WMI reported {_cpuInfo.CurrentClockMhz:0} MHz current • {_cpuInfo.MaxClockMhz:0} MHz maximum";
     public string CacheLine => _cpuInfo is null ? "Cache information unavailable" : $"L1 {_cpuInfo.L1CacheKb:0} KB • L2 {_cpuInfo.L2CacheKb:0} KB • L3 {_cpuInfo.L3CacheKb:0} KB";
     public string SensorSummary { get; private set; } = "No CPU sensors reported";
@@ -71,7 +71,7 @@ public sealed class CpuTelemetryViewModel : ViewModelBase
         var clocks = coreClocks.Count == 0 ? allClocks : coreClocks;
         var powers = sensors.Where(sensor => (sensor.Type.Equals("Power", StringComparison.OrdinalIgnoreCase) || sensor.Type.Equals("Current", StringComparison.OrdinalIgnoreCase)) && sensor.Value >= 0).ToList();
         var voltages = sensors.Where(sensor => sensor.Type.Equals("Voltage", StringComparison.OrdinalIgnoreCase) && sensor.Value > 0).ToList();
-        var temperatures = sensors.Where(sensor => sensor.Type.Equals("Temperature", StringComparison.OrdinalIgnoreCase) && sensor.Value > -40 && sensor.Value < 150).ToList();
+        var temperatures = sensors.Where(sensor => sensor.Type.Equals("Temperature", StringComparison.OrdinalIgnoreCase) && sensor.Value > 0 && sensor.Value < 150).ToList();
         UpdateSensorRows(sensors);
 
         var currentClock = clocks.Count == 0 ? 0 : clocks.Average(sensor => sensor.Value);
