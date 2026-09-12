@@ -7,13 +7,16 @@ using ExteraMonitor.ViewModels.Modules;
 namespace ExteraMonitor.ViewModels;
 public sealed class MainViewModel : ViewModelBase
 {
-    private readonly ISystemMetricsProvider _provider; private readonly IMetricsHistoryRepository _history; private readonly DispatcherTimer _timer; private readonly Dictionary<string, ViewModelBase> _modules; private DateTime _updated = DateTime.Now; private string _active = "Overview"; private bool _live = true; private ViewModelBase _activeModule = null!; private int _refreshInProgress;
+    private readonly ISystemMetricsProvider _provider; private readonly IMetricsHistoryRepository _history; private readonly DispatcherTimer _timer; private readonly Dictionary<string, ViewModelBase> _modules; private DateTime? _updated; private string _active = "Overview"; private bool _live = true; private ViewModelBase _activeModule = null!; private int _refreshInProgress;
     public OverviewModuleViewModel Overview { get; } = new(); public CpuModuleViewModel Cpu { get; } = new(); public MemoryModuleViewModel Memory { get; } = new(); public StorageModuleViewModel Storage { get; } = new(); public NetworkModuleViewModel Network { get; } = new(); public ProcessModuleViewModel Processes { get; } = new(); public OverlayModuleViewModel Overlay { get; } = new(); public SoftwareModuleViewModel Software { get; } = new(); public SensorsModuleViewModel Sensors { get; } = new(); public DriverModuleViewModel Driver { get; } = new(); public SettingsModuleViewModel Settings { get; }
     public ObservableCollection<NavigationItem> Navigation { get; } = new() { new("Overview", "⌂", true), new("CPU", "◒"), new("Memory", "▤"), new("Storage", "◫"), new("Network", "↗"), new("Processes", "≡"), new("Sensors", "°"), new("Driver", "⌁"), new("Settings", "⚙"), new("Overlay", "▣"), new("Software", "⊞") };
     public ViewModelBase ActiveModule { get => _activeModule; private set => SetProperty(ref _activeModule, value); }
     public string WorkstationName => $"{Environment.MachineName} / LOCAL";
     public string ActiveSection { get => _active; set { if (SetProperty(ref _active, value)) { foreach (var item in Navigation) item.IsSelected = item.Label == value; ActiveModule = _modules[value]; } } }
-    public bool IsLive { get => _live; set { if (SetProperty(ref _live, value)) OnPropertyChanged(nameof(StatusLabel)); } } public string StatusLabel => IsLive ? "LIVE MONITORING" : "PAUSED"; public string LastUpdated => $"Updated {_updated:HH:mm:ss}";
+    public bool IsLive { get => _live; set { if (SetProperty(ref _live, value)) { OnPropertyChanged(nameof(StatusLabel)); OnPropertyChanged(nameof(LiveActionLabel)); } } }
+    public string StatusLabel => IsLive ? "LIVE SAMPLING" : "SAMPLING PAUSED";
+    public string LiveActionLabel => IsLive ? "PAUSE" : "RESUME";
+    public string LastUpdated => _updated is { } updated ? $"LAST SAMPLE {updated:HH:mm:ss}" : "WAITING FOR FIRST SAMPLE";
     public ICommand SelectSectionCommand { get; } public ICommand ToggleLiveCommand { get; }
     public MainViewModel() : this(SystemMetricsProviderFactory.Create(), new SqliteMetricsHistoryRepository()) { }
     public MainViewModel(ISystemMetricsProvider provider) : this(provider, new SqliteMetricsHistoryRepository()) { }
