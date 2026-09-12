@@ -1,0 +1,57 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ExteraMonitor.App"
+             xmlns:local="using:ExteraMonitor"
+             RequestedThemeVariant="Default">
+             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+
+    <Application.Resources>
+        <SolidColorBrush x:Key="ThemeWindowBrush" Color="#E7F6F2"/>
+        <SolidColorBrush x:Key="ThemeChromeBrush" Color="#2C3333"/>
+        <SolidColorBrush x:Key="ThemeAccentBrush" Color="#395B64"/>
+        <SolidColorBrush x:Key="ThemeSoftBrush" Color="#A5C9CA"/>
+    </Application.Resources>
+
+    <Application.DataTemplates>
+        <local:ViewLocator />
+    </Application.DataTemplates>
+
+    <Application.Styles>
+        <FluentTheme />
+        <!-- The editor supplies its own surface; do not render the default dark FlyoutPresenter behind it. -->
+        <Style Selector="FlyoutPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style Selector="Window"><Setter Property="FontFamily" Value="Inter"/><Setter Property="Foreground" Value="{DynamicResource ThemeChromeBrush}"/></Style>
+        <Style Selector="TextBlock.eyebrow"><Setter Property="FontSize" Value="11"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="LetterSpacing" Value="2"/><Setter Property="Foreground" Value="{DynamicResource ThemeAccentBrush}"/></Style>
+        <Style Selector="TextBlock.muted"><Setter Property="Foreground" Value="{DynamicResource ThemeAccentBrush}"/></Style>
+        <Style Selector="TextBlock.value"><Setter Property="FontSize" Value="29"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Foreground" Value="{DynamicResource ThemeChromeBrush}"/></Style>
+        <Style Selector="Border.card"><Setter Property="Background" Value="{DynamicResource ThemeWindowBrush}"/><Setter Property="CornerRadius" Value="18"/><Setter Property="Padding" Value="22"/></Style>
+        <Style Selector="Border.panel"><Setter Property="Background" Value="{DynamicResource ThemeWindowBrush}"/><Setter Property="CornerRadius" Value="18"/><Setter Property="Padding" Value="22"/></Style>
+        <Style Selector="Border.telemetry-card"><Setter Property="Background" Value="{DynamicResource ThemeSoftBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="12"/></Style>
+        <Style Selector="Button.nav-item"><Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="{DynamicResource ThemeSoftBrush}"/><Setter Property="HorizontalContentAlignment" Value="Left"/><Setter Property="Padding" Value="16,12"/><Setter Property="Margin" Value="0,3"/><Setter Property="CornerRadius" Value="11"/></Style>
+        <Style Selector="Button.nav-item:pointerover"><Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}"/><Setter Property="Foreground" Value="{DynamicResource ThemeWindowBrush}"/></Style>
+        <Style Selector="Button.nav-item.selected"><Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}"/><Setter Property="Foreground" Value="{DynamicResource ThemeWindowBrush}"/></Style>
+        <Style Selector="Button.live"><Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}"/><Setter Property="Foreground" Value="{DynamicResource ThemeWindowBrush}"/><Setter Property="CornerRadius" Value="9"/><Setter Property="Padding" Value="14,9"/></Style>
+        <Style Selector="Button.driver-control"><Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}"/><Setter Property="Foreground" Value="{DynamicResource ThemeWindowBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource ThemeSoftBrush}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="10"/><Setter Property="Padding" Value="14,11"/><Setter Property="HorizontalContentAlignment" Value="Left"/></Style>
+        <Style Selector="Button.driver-control:pointerover"><Setter Property="Background" Value="{DynamicResource ThemeSoftBrush}"/><Setter Property="Foreground" Value="{DynamicResource ThemeChromeBrush}"/></Style>
+        <Style Selector="Button.driver-control:pressed"><Setter Property="Background" Value="{DynamicResource ThemeChromeBrush}"/><Setter Property="Foreground" Value="{DynamicResource ThemeWindowBrush}"/></Style>
+        <Style Selector="Button.module-action"><Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}"/><Setter Property="Foreground" Value="{DynamicResource ThemeWindowBrush}"/><Setter Property="CornerRadius" Value="9"/><Setter Property="Padding" Value="12,8"/></Style>
+        <Style Selector="Button.module-action:pointerover"><Setter Property="Background" Value="{DynamicResource ThemeSoftBrush}"/><Setter Property="Foreground" Value="{DynamicResource ThemeChromeBrush}"/></Style>
+        <Style Selector="Button.widget-action"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="4,2"/><Setter Property="FontSize" Value="10"/><Setter Property="CornerRadius" Value="6"/></Style>
+        <Style Selector="Button.widget-action:pointerover"><Setter Property="Background" Value="{DynamicResource ThemeSoftBrush}"/></Style>
+        <Style Selector="Button.toolbar-action"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="3,2"/><Setter Property="FontSize" Value="9"/><Setter Property="CornerRadius" Value="5"/><Setter Property="MinWidth" Value="20"/><Setter Property="MinHeight" Value="22"/></Style>
+        <Style Selector="Button.toolbar-action:pointerover"><Setter Property="Background" Value="{DynamicResource ThemeSoftBrush}"/></Style>
+        <Style Selector="Button.toolbar-action"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="3,2"/><Setter Property="FontSize" Value="9"/><Setter Property="CornerRadius" Value="5"/><Setter Property="MinWidth" Value="20"/><Setter Property="MinHeight" Value="22"/></Style>
+        <Style Selector="Button.toolbar-action:pointerover"><Setter Property="Background" Value="{DynamicResource ThemeSoftBrush}"/></Style>
+        <Style Selector="Button.info-action"><Setter Property="Width" Value="24"/><Setter Property="Height" Value="24"/><Setter Property="Padding" Value="0"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="{DynamicResource ThemeSoftBrush}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="12"/><Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="FontWeight" Value="Bold"/></Style>
+        <Style Selector="Button.info-action:pointerover"><Setter Property="Background" Value="{DynamicResource ThemeSoftBrush}"/><Setter Property="Foreground" Value="{DynamicResource ThemeChromeBrush}"/></Style>
+        <Style Selector="Button.window-control"><Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="{DynamicResource ThemeSoftBrush}"/><Setter Property="Width" Value="46"/><Setter Property="Height" Value="42"/><Setter Property="Padding" Value="0"/><Setter Property="CornerRadius" Value="0"/><Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style>
+        <Style Selector="Button.window-control:pointerover"><Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}"/><Setter Property="Foreground" Value="{DynamicResource ThemeWindowBrush}"/></Style>
+        <Style Selector="Button.window-control.close:pointerover"><Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}"/><Setter Property="Foreground" Value="{DynamicResource ThemeWindowBrush}"/></Style>
+        <Style Selector="ProgressBar"><Setter Property="Height" Value="8"/><Setter Property="Background" Value="{DynamicResource ThemeSoftBrush}"/><Setter Property="Foreground" Value="{DynamicResource ThemeAccentBrush}"/></Style>
+    </Application.Styles>
+</Application>

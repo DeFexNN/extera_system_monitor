@@ -1,0 +1,8 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:ExteraMonitor.ViewModels.Modules" x:Class="ExteraMonitor.Views.Modules.DriverModuleView" x:DataType="vm:DriverModuleViewModel">
+  <StackPanel Margin="42,34,42,42" Spacing="14">
+    <Button Classes="driver-control" Content="LOAD" Command="{Binding LoadCommand}" />
+    <Button Classes="driver-control" Content="RELOAD" Command="{Binding ReloadCommand}" />
+    <Button Classes="driver-control" Content="STOP" Command="{Binding StopCommand}" />
+    <Button Classes="driver-control" Content="REMOVE" Command="{Binding RemoveCommand}" />
+  </StackPanel>
+</UserControl>

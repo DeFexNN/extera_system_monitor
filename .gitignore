@@ -1,0 +1,12 @@
+bin/
+obj/
+build-verify/
+obj-verify/
+TempProbe/bin/
+TempProbe/obj/
+Driver/*.obj
+Driver/*.sys
+Driver/*.i
+Driver/kvc.exe
+Driver/kvc.dat
+app-start.log

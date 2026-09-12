@@ -1,0 +1,271 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ExteraMonitor.ViewModels.Modules"
+             xmlns:controls="using:ExteraMonitor.Views.Controls"
+             x:Class="ExteraMonitor.Views.Modules.CpuModuleView"
+             x:CompileBindings="False">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="24,20,24,28" Spacing="14">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="14">
+        <StackPanel Spacing="3" VerticalAlignment="Center">
+          <TextBlock Text="CPU" FontSize="30" FontWeight="SemiBold"/>
+          <TextBlock Text="Monitor your processor in real time. Arrange cards to build your workspace." Classes="muted" FontSize="13" TextWrapping="Wrap"/>
+        </StackPanel>
+        <WrapPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+          <Button Classes="module-action" Content="＋ ADD WIDGET" Margin="0,0,8,6">
+            <Button.Flyout>
+              <Flyout>
+                <Border Width="330" MaxHeight="560" Padding="14" Background="{DynamicResource ThemeWindowBrush}" BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="1" CornerRadius="12">
+                  <StackPanel Spacing="10">
+                    <StackPanel Spacing="3">
+                      <TextBlock Text="WIDGET LIBRARY" Classes="eyebrow"/>
+                      <TextBlock Text="Add a card once; duplicates are disabled." Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ScrollViewer MaxHeight="470" VerticalScrollBarVisibility="Auto">
+                      <ItemsControl ItemsSource="{Binding WidgetLibrary}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,0,0,6">
+                              <StackPanel Spacing="2" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding Summary}" Classes="muted" FontSize="10" TextWrapping="Wrap"/>
+                              </StackPanel>
+                              <Button Grid.Column="1" Classes="toolbar-action" Content="{Binding ActionText}" Command="{Binding AddCommand}" IsEnabled="{Binding CanAdd}" VerticalAlignment="Center"/>
+                            </Grid>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </ScrollViewer>
+                  </StackPanel>
+                </Border>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+          <Button Classes="module-action" Content="LAYOUT ▾" Margin="0,0,8,6">
+            <Button.Flyout>
+              <Flyout>
+                <Border Padding="12" Background="{DynamicResource ThemeWindowBrush}" BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="1" CornerRadius="10">
+                  <StackPanel Spacing="8" Width="190">
+                    <TextBlock Text="DASHBOARD LAYOUT" Classes="eyebrow"/>
+                    <TextBlock Text="Drag cards by the grip. Resize from the lower-right corner. Layout is saved automatically." Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+                    <Button Classes="module-action" Content="RESET LAYOUT" Command="{Binding ResetLayoutCommand}"/>
+                  </StackPanel>
+                </Border>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+          <Button Classes="module-action" Content="PALETTE ▾" Margin="0,0,0,6">
+            <Button.Flyout>
+              <Flyout>
+                <Border Width="310" Padding="14" Background="{DynamicResource ThemeWindowBrush}" BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="1" CornerRadius="12">
+                  <StackPanel Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <StackPanel Spacing="3"><TextBlock Text="ACCENT PALETTE" Classes="eyebrow"/><TextBlock Text="Four editable CPU-page accents." Classes="muted" FontSize="11"/></StackPanel>
+                      <Button Grid.Column="1" Content="RESET" Classes="toolbar-action" Command="{Binding ResetAccentsCommand}" VerticalAlignment="Center"/>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding Accents}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="7" Margin="0,0,0,5">
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                              <Border Width="14" Height="14" CornerRadius="7" Background="{Binding SwatchBrush}"/>
+                              <TextBlock Text="{Binding Name}" Classes="eyebrow" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBox Grid.Column="1" Width="88" Text="{Binding HexText}" VerticalContentAlignment="Center"/>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                              <controls:ManualColorPicker SelectedColor="{Binding SelectedColor, Mode=TwoWay}" ColorApplied="AccentPresetApplied" ToolTip.Tip="Choose color"/>
+                              <Button Content="APPLY" Classes="toolbar-action" Command="{Binding ApplyCommand}"/>
+                            </StackPanel>
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="Active page accent" Classes="muted" FontSize="11"/>
+                    <StackPanel Orientation="Horizontal" Spacing="9">
+                      <ComboBox Width="125" ItemsSource="{Binding AccentPresets}" SelectedItem="{Binding SelectedAccentPreset}"/>
+                      <controls:ManualColorPicker SelectedColor="{Binding SelectedAccentColor, Mode=TwoWay}" ColorApplied="AccentColorApplied" ToolTip.Tip="Customize active accent"/>
+                      <TextBlock Text="{Binding SelectedAccentHex}" Classes="muted" FontSize="11" VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+        </WrapPanel>
+      </Grid>
+
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
+          <TextBlock Text="ACCENT" Classes="eyebrow" VerticalAlignment="Center"/>
+          <ComboBox Width="118" ItemsSource="{Binding AccentPresets}" SelectedItem="{Binding SelectedAccentPreset}"/>
+          <controls:ManualColorPicker SelectedColor="{Binding SelectedAccentColor, Mode=TwoWay}" ColorApplied="AccentColorApplied" ToolTip.Tip="Edit active accent color"/>
+          <TextBlock Text="{Binding SelectedAccentHex}" Classes="muted" FontSize="11" VerticalAlignment="Center"/>
+        </StackPanel>
+        <TextBlock Grid.Column="1" Text="Drag · resize · style · add" Classes="muted" FontSize="11" VerticalAlignment="Center"/>
+      </Grid>
+
+      <Border Classes="panel" Padding="10">
+        <Border x:Name="WidgetSurface" Height="{Binding DashboardHeight}" MinHeight="280" Background="{DynamicResource ThemeSoftBrush}" CornerRadius="14" SizeChanged="WidgetSurface_SizeChanged" PointerMoved="WidgetSurface_PointerMoved" PointerReleased="WidgetSurface_PointerReleased">
+          <ItemsControl ItemsSource="{Binding Widgets}">
+            <ItemsControl.Styles>
+              <Style Selector="ContentPresenter">
+                <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+              </Style>
+            </ItemsControl.Styles>
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><Canvas/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Width="{Binding Width}" Height="{Binding Height}" Background="{Binding SurfaceBrush}" BorderBrush="{Binding BorderBrush}" BorderThickness="1" CornerRadius="14" Padding="12" ClipToBounds="True">
+                  <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="7">
+                      <Border Classes="drag-handle" Width="22" Height="22" CornerRadius="7" Background="{Binding BorderBrush}" PointerPressed="WidgetDrag_PointerPressed" ToolTip.Tip="Drag card">
+                        <TextBlock Text="⠿" Foreground="{Binding SurfaceBrush}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      </Border>
+                      <TextBlock Grid.Column="1" Text="{Binding WidgetHeaderTitle}" Foreground="{Binding MutedBrush}" FontSize="{Binding WidgetHeaderFontSize}" FontWeight="Bold" LetterSpacing="1.05" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                        <controls:ManualColorPicker Width="22" Height="22" SwatchSize="20" SelectedColor="{Binding SelectedColor, Mode=TwoWay}" ColorApplied="WidgetColorApplied" ToolTip.Tip="Card accent color"/>
+                        <Button Classes="toolbar-action" Content="{Binding StyleLabel}" Foreground="{Binding MutedBrush}" Padding="6,4">
+                          <Button.Flyout>
+                            <Flyout>
+                              <Border Background="{DynamicResource ThemeWindowBrush}" BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="1" CornerRadius="12" Padding="14" Width="300">
+                                <StackPanel Spacing="10">
+                                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <StackPanel Spacing="2"><TextBlock Text="CARD STYLE" Classes="eyebrow"/><TextBlock Text="Each card keeps its own palette." Classes="muted" FontSize="10"/></StackPanel>
+                                    <Button Grid.Column="1" Content="＋ STYLE" Classes="toolbar-action" Command="{Binding AddStyleCommand}" VerticalAlignment="Center"/>
+                                  </Grid>
+                                  <ComboBox ItemsSource="{Binding StyleOptions}" SelectedItem="{Binding Style}"/>
+                                  <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="5">
+                                    <TextBlock Text="BACKGROUND" Classes="muted" FontSize="10" VerticalAlignment="Center"/><controls:ManualColorPicker Grid.Column="1" SelectedColor="{Binding ActiveStyle.BackgroundColor, Mode=TwoWay}" ColorApplied="StyleColorApplied"/>
+                                    <TextBlock Grid.Row="1" Text="TEXT" Classes="muted" FontSize="10" VerticalAlignment="Center"/><controls:ManualColorPicker Grid.Row="1" Grid.Column="1" SelectedColor="{Binding ActiveStyle.TextColor, Mode=TwoWay}" ColorApplied="StyleColorApplied"/>
+                                    <TextBlock Grid.Row="2" Text="MUTED TEXT" Classes="muted" FontSize="10" VerticalAlignment="Center"/><controls:ManualColorPicker Grid.Row="2" Grid.Column="1" SelectedColor="{Binding ActiveStyle.MutedColor, Mode=TwoWay}" ColorApplied="StyleColorApplied"/>
+                                    <TextBlock Grid.Row="3" Text="BORDER" Classes="muted" FontSize="10" VerticalAlignment="Center"/><controls:ManualColorPicker Grid.Row="3" Grid.Column="1" SelectedColor="{Binding ActiveStyle.BorderColor, Mode=TwoWay}" ColorApplied="StyleColorApplied"/>
+                                    <TextBlock Grid.Row="4" Text="GRAPH / ACCENT" Classes="muted" FontSize="10" VerticalAlignment="Center"/><controls:ManualColorPicker Grid.Row="4" Grid.Column="1" SelectedColor="{Binding ActiveStyle.AccentColor, Mode=TwoWay}" ColorApplied="StyleColorApplied"/>
+                                  </Grid>
+                                </StackPanel>
+                              </Border>
+                            </Flyout>
+                          </Button.Flyout>
+                        </Button>
+                        <Button Classes="toolbar-action" Content="ⓘ" Foreground="{Binding MutedBrush}" Padding="6,4" ToolTip.Tip="What this card shows">
+                          <Button.Flyout><Flyout><Border Width="280" Padding="12" Background="{DynamicResource ThemeWindowBrush}" BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="1" CornerRadius="10"><TextBlock Text="{Binding InfoText}" TextWrapping="Wrap" FontSize="12" LineHeight="17"/></Border></Flyout></Button.Flyout>
+                        </Button>
+                        <Button Classes="toolbar-action" Content="×" Click="RemoveWidget_Click" Foreground="{Binding MutedBrush}" Padding="6,4" ToolTip.Tip="Remove card"/>
+                      </StackPanel>
+                    </Grid>
+
+                    <Grid Grid.Row="1">
+                      <StackPanel Spacing="7" VerticalAlignment="Center" IsVisible="{Binding IsMetricCard}">
+                        <TextBlock Text="{Binding ValueText}" Foreground="{Binding TextBrush}" FontSize="{Binding WidgetValueFontSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                        <controls:TelemetryGraph Height="{Binding GraphHeight}" Values="{Binding GraphValues}" Stroke="{Binding GraphBrush}" Minimum="0" Maximum="100"/>
+                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="5">
+                          <StackPanel Orientation="Horizontal" Spacing="4"><TextBlock Text="MIN" Classes="muted" FontSize="9"/><TextBlock Text="{Binding StatMinimum}" Foreground="{Binding TextBrush}" FontSize="10" TextTrimming="CharacterEllipsis"/></StackPanel>
+                          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center"><TextBlock Text="AVG" Classes="muted" FontSize="9"/><TextBlock Text="{Binding StatAverage}" Foreground="{Binding TextBrush}" FontSize="10" TextTrimming="CharacterEllipsis"/></StackPanel>
+                          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right"><TextBlock Text="MAX" Classes="muted" FontSize="9"/><TextBlock Text="{Binding StatMaximum}" Foreground="{Binding TextBrush}" FontSize="10" TextTrimming="CharacterEllipsis"/></StackPanel>
+                        </Grid>
+                      </StackPanel>
+
+                      <ItemsControl IsVisible="{Binding IsCores}" ItemsSource="{Binding CoreLoads}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="{Binding CoreColumnCount}"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="2">
+                              <Grid Width="{Binding DataContext.CoreGaugeSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Height="{Binding DataContext.CoreGaugeSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
+                                <controls:CoreLoadGauge Usage="{Binding UsagePercent}" Accent="{Binding AccentBrush}" Track="{Binding BorderBrush}"/>
+                                <TextBlock Text="{Binding UsagePercent, StringFormat={}{0:0}%}" Foreground="{Binding TextBrush}" FontSize="{Binding DataContext.CoreValueFontSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                              </Grid>
+                              <TextBlock Text="{Binding Label}" Foreground="{Binding MutedBrush}" FontSize="10" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+
+                      <Grid IsVisible="{Binding IsHistory}" RowDefinitions="Auto,*" RowSpacing="6">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                          <WrapPanel VerticalAlignment="Center">
+                            <ToggleButton Content="LOAD" IsChecked="{Binding DataContext.ShowHistoryLoad, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,5,4"/>
+                            <ToggleButton Content="TEMP" IsChecked="{Binding DataContext.ShowHistoryTemperature, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,5,4"/>
+                            <ToggleButton Content="CLOCK" IsChecked="{Binding DataContext.ShowHistoryClock, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,5,4"/>
+                            <ToggleButton Content="POWER" IsChecked="{Binding DataContext.ShowHistoryPower, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,5,4"/>
+                          </WrapPanel>
+                          <ComboBox Grid.Column="1" Width="76" ItemsSource="{Binding DataContext.HistoryRanges, RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding DataContext.HistoryRange, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                        </Grid>
+                        <Grid Grid.Row="1" ClipToBounds="True">
+                          <controls:TelemetryGraph Values="{Binding DataContext.HistoryLoad, RelativeSource={RelativeSource AncestorType=UserControl}}" Stroke="{Binding GraphBrush}" Minimum="0" Maximum="100" ShowGrid="True" IsVisible="{Binding DataContext.ShowHistoryLoad, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                          <controls:TelemetryGraph Values="{Binding DataContext.HistoryTemperature, RelativeSource={RelativeSource AncestorType=UserControl}}" Stroke="#D86B24" Minimum="20" Maximum="110" ShowGrid="False" IsVisible="{Binding DataContext.ShowHistoryTemperature, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                          <controls:TelemetryGraph Values="{Binding DataContext.HistoryClock, RelativeSource={RelativeSource AncestorType=UserControl}}" Stroke="#7353C6" Minimum="0" Maximum="6000" ShowGrid="False" IsVisible="{Binding DataContext.ShowHistoryClock, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                          <controls:TelemetryGraph Values="{Binding DataContext.HistoryPower, RelativeSource={RelativeSource AncestorType=UserControl}}" Stroke="#159A8C" Minimum="0" Maximum="180" ShowGrid="False" IsVisible="{Binding DataContext.ShowHistoryPower, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                        </Grid>
+                      </Grid>
+
+                      <StackPanel IsVisible="{Binding IsPower}" Spacing="7" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding DataContext.Telemetry.PackagePower, RelativeSource={RelativeSource AncestorType=UserControl}}" Foreground="{Binding TextBrush}" FontSize="28" FontWeight="SemiBold"/>
+                        <ItemsControl ItemsSource="{Binding DataContext.Telemetry.PowerSummaryRows, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                          <ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="*,Auto" Margin="0,2"><TextBlock Text="{Binding Label}" Classes="muted" FontSize="11"/><TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="11"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+
+                      <StackPanel IsVisible="{Binding IsVoltage}" Spacing="7" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding DataContext.Telemetry.CoreVoltage, RelativeSource={RelativeSource AncestorType=UserControl}}" Foreground="{Binding TextBrush}" FontSize="26" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding DataContext.Telemetry.VoltageRange, RelativeSource={RelativeSource AncestorType=UserControl}}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+                        <controls:TelemetryGraph Height="34" Values="{Binding DataContext.Telemetry.VoltageHistory, RelativeSource={RelativeSource AncestorType=UserControl}}" Stroke="{Binding GraphBrush}" Minimum="0.5" Maximum="1.8"/>
+                      </StackPanel>
+
+                      <ItemsControl IsVisible="{Binding IsTemperatures}" ItemsSource="{Binding DataContext.Telemetry.TemperatureSummaryRows, RelativeSource={RelativeSource AncestorType=UserControl}}" VerticalAlignment="Center">
+                        <ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,3"><TextBlock Text="{Binding Label}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis"/><TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="11"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
+                      </ItemsControl>
+
+                      <ItemsControl IsVisible="{Binding IsPowerLimits}" ItemsSource="{Binding DataContext.Telemetry.PowerLimits, RelativeSource={RelativeSource AncestorType=UserControl}}" VerticalAlignment="Center">
+                        <ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="36,*,Auto" ColumnSpacing="7" Margin="0,4"><TextBlock Text="{Binding Label}" Classes="eyebrow" FontSize="10"/><ProgressBar Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Percent}" Height="7" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding Value}" FontSize="10"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
+                      </ItemsControl>
+
+                      <ItemsControl IsVisible="{Binding IsFrequency}" ItemsSource="{Binding DataContext.Telemetry.FrequencyBands, RelativeSource={RelativeSource AncestorType=UserControl}}" VerticalAlignment="Center">
+                        <ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="54,*,Auto" ColumnSpacing="7" Margin="0,3"><TextBlock Text="{Binding Label}" Classes="muted" FontSize="10"/><ProgressBar Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Percent}" Height="7" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding Value}" FontSize="10"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
+                      </ItemsControl>
+
+                      <ItemsControl IsVisible="{Binding IsCStates}" ItemsSource="{Binding DataContext.Telemetry.CStates, RelativeSource={RelativeSource AncestorType=UserControl}}" VerticalAlignment="Center">
+                        <ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="7" Margin="0,3"><TextBlock Text="{Binding Label}" Classes="muted" FontSize="10" TextTrimming="CharacterEllipsis"/><ProgressBar Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Percent}" Height="7" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding Value}" FontSize="10"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
+                      </ItemsControl>
+
+                      <StackPanel IsVisible="{Binding IsInformation}" Spacing="6" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding DataContext.Telemetry.CpuInfoLine, RelativeSource={RelativeSource AncestorType=UserControl}}" Foreground="{Binding TextBrush}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding DataContext.Telemetry.CpuPlatformLine, RelativeSource={RelativeSource AncestorType=UserControl}}" Foreground="{Binding MutedBrush}" FontSize="11" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding DataContext.Telemetry.CpuClockLine, RelativeSource={RelativeSource AncestorType=UserControl}}" Foreground="{Binding MutedBrush}" FontSize="10" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding DataContext.Telemetry.CacheLine, RelativeSource={RelativeSource AncestorType=UserControl}}" Foreground="{Binding MutedBrush}" FontSize="10" TextWrapping="Wrap"/>
+                      </StackPanel>
+
+                      <ItemsControl IsVisible="{Binding IsProcesses}" ItemsSource="{Binding DataContext.Telemetry.TopProcesses, RelativeSource={RelativeSource AncestorType=UserControl}}" VerticalAlignment="Center">
+                        <ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,3"><TextBlock Text="{Binding Name}" FontSize="11" TextTrimming="CharacterEllipsis"/><TextBlock Grid.Column="1" Text="{Binding CpuText}" FontSize="11"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
+                      </ItemsControl>
+
+                      <StackPanel IsVisible="{Binding IsPerCore}" Spacing="4">
+                        <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8"><TextBlock Text="CORE" Classes="eyebrow" FontSize="9"/><TextBlock Grid.Column="1" Text="LOAD" Classes="eyebrow" FontSize="9"/><TextBlock Grid.Column="2" Text="CLOCK" Classes="eyebrow" FontSize="9"/><TextBlock Grid.Column="3" Text="TEMP" Classes="eyebrow" FontSize="9"/></Grid>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsControl ItemsSource="{Binding DataContext.Telemetry.Cores, RelativeSource={RelativeSource AncestorType=UserControl}}"><ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8" Margin="0,2"><TextBlock Text="{Binding Label}" FontSize="10"/><TextBlock Grid.Column="1" Text="{Binding Load}" FontSize="10"/><TextBlock Grid.Column="2" Text="{Binding Clock}" FontSize="10"/><TextBlock Grid.Column="3" Text="{Binding Temperature}" FontSize="10"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></ScrollViewer>
+                      </StackPanel>
+
+                      <StackPanel IsVisible="{Binding IsSensors}" Spacing="6">
+                        <TextBlock Text="{Binding DataContext.Telemetry.SensorSummary, RelativeSource={RelativeSource AncestorType=UserControl}}" Classes="muted" FontSize="10" TextWrapping="Wrap"/>
+                        <ItemsControl ItemsSource="{Binding DataContext.SensorPreview, RelativeSource={RelativeSource AncestorType=UserControl}}" IsVisible="{Binding DataContext.SensorsCollapsed, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate><DataTemplate><Border BorderBrush="{DynamicResource ThemeAccentBrush}" BorderThickness="1" CornerRadius="6" Padding="6,3" Margin="0,0,5,5"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="{Binding Label}" FontSize="9" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Value}" FontSize="9" FontWeight="SemiBold"/></StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto" IsVisible="{Binding DataContext.SensorsExpanded, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                          <ItemsControl ItemsSource="{Binding DataContext.Telemetry.AllSensors, RelativeSource={RelativeSource AncestorType=UserControl}}"><ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,2"><TextBlock Text="{Binding Label}" FontSize="10" TextTrimming="CharacterEllipsis"/><TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="10"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                        </ScrollViewer>
+                        <Button Content="{Binding DataContext.SensorsToggleText, RelativeSource={RelativeSource AncestorType=UserControl}}" Classes="toolbar-action" HorizontalAlignment="Left" Click="SensorsToggle_Click"/>
+                      </StackPanel>
+                    </Grid>
+
+                    <Border Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" Classes="resize-handle" Width="19" Height="19" CornerRadius="10" Background="{Binding BorderBrush}" Opacity="0.85" PointerPressed="WidgetResize_PointerPressed" ToolTip.Tip="Resize card">
+                      <TextBlock Text="↘" Foreground="{Binding SurfaceBrush}" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Border>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

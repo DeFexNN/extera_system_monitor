@@ -1,0 +1,68 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ExteraMonitor.Views.Controls.ManualColorPicker"
+             x:Name="PickerRoot">
+  <Grid>
+    <Button x:Name="SwatchButton" Width="{Binding SwatchSize, ElementName=PickerRoot}" Height="{Binding SwatchSize, ElementName=PickerRoot}" Padding="2" Background="Transparent" BorderBrush="Transparent" BorderThickness="0" Click="SwatchButton_Click">
+      <Border x:Name="SwatchBorder" CornerRadius="14" BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="1"/>
+    </Button>
+    <Popup x:Name="PickerPopup" PlacementTarget="{Binding ElementName=SwatchButton}" IsLightDismissEnabled="True" HorizontalOffset="8" VerticalOffset="6">
+      <Border Background="{DynamicResource ThemeWindowBrush}" BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="1" CornerRadius="12" Padding="14" Width="270">
+        <StackPanel Spacing="11">
+          <TextBlock Text="CUSTOM COLOR" Classes="eyebrow"/>
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBox x:Name="HexBox" Text="#395B64" PlaceholderText="#RRGGBB"/>
+            <Button Grid.Column="1" Content="APPLY" Classes="module-action" Padding="10,6" Click="Apply_Click"/>
+          </Grid>
+          <TextBlock Text="SATURATION / BRIGHTNESS" Classes="muted" FontSize="10"/>
+          <Border x:Name="SpectrumBorder" Height="150" Background="Transparent" CornerRadius="10" ClipToBounds="True" PointerPressed="Spectrum_PointerPressed" PointerMoved="Spectrum_PointerMoved" PointerReleased="Spectrum_PointerReleased">
+            <Grid>
+              <Border x:Name="SpectrumHueLayer" IsHitTestVisible="False"/>
+              <Border IsHitTestVisible="False">
+                <Border.Background>
+                  <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                    <GradientStop Color="#FFFFFFFF" Offset="0"/>
+                    <GradientStop Color="#00FFFFFF" Offset="1"/>
+                  </LinearGradientBrush>
+                </Border.Background>
+              </Border>
+              <Border IsHitTestVisible="False">
+                <Border.Background>
+                  <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                    <GradientStop Color="#00000000" Offset="0"/>
+                    <GradientStop Color="#FF000000" Offset="1"/>
+                  </LinearGradientBrush>
+                </Border.Background>
+              </Border>
+              <Canvas IsHitTestVisible="False">
+                <Ellipse x:Name="SpectrumThumb" Width="14" Height="14" Fill="Transparent" Stroke="White" StrokeThickness="2"/>
+              </Canvas>
+            </Grid>
+          </Border>
+          <TextBlock Text="HUE" Classes="muted" FontSize="10"/>
+          <Border x:Name="HueBorder" Height="18" Background="Transparent" CornerRadius="9" ClipToBounds="True" PointerPressed="Hue_PointerPressed" PointerMoved="Hue_PointerMoved" PointerReleased="Hue_PointerReleased">
+            <Grid>
+              <Border IsHitTestVisible="False">
+                <Border.Background>
+                  <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                    <GradientStop Color="#FFFF0000" Offset="0"/>
+                    <GradientStop Color="#FFFFFF00" Offset="0.17"/>
+                    <GradientStop Color="#FF00FF00" Offset="0.34"/>
+                    <GradientStop Color="#FF00FFFF" Offset="0.51"/>
+                    <GradientStop Color="#FF0000FF" Offset="0.68"/>
+                    <GradientStop Color="#FFFF00FF" Offset="0.85"/>
+                    <GradientStop Color="#FFFF0000" Offset="1"/>
+                  </LinearGradientBrush>
+                </Border.Background>
+              </Border>
+              <Canvas IsHitTestVisible="False">
+                <Border x:Name="HueThumb" Width="4" Height="22" Background="White" BorderBrush="#2C3333" BorderThickness="1" CornerRadius="2"/>
+              </Canvas>
+            </Grid>
+          </Border>
+          <Border x:Name="PreviewBorder" Height="24" CornerRadius="9" BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="1"/>
+        </StackPanel>
+      </Border>
+    </Popup>
+  </Grid>
+</UserControl>

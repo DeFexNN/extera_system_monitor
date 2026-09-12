@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ExteraMonitor.ViewModels.Modules"
+             xmlns:controls="using:ExteraMonitor.Views.Controls"
+             x:Class="ExteraMonitor.Views.Modules.CustomizationModuleView"
+             x:DataType="vm:CustomizationModuleViewModel">
+  <ScrollViewer>
+    <StackPanel Margin="42,34,42,42" Spacing="24">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+        <StackPanel Spacing="6">
+          <TextBlock Text="Customization" FontSize="31" FontWeight="SemiBold"/>
+          <TextBlock Text="Persistent CPU module layouts, styles and accent colors." Classes="muted" FontSize="14"/>
+        </StackPanel>
+        <Button Grid.Column="1" Classes="module-action" Content="RESET CPU LAYOUT" Command="{Binding ResetCommand}" VerticalAlignment="Center"/>
+      </Grid>
+
+      <Border Classes="panel">
+        <StackPanel Spacing="16">
+          <TextBlock Text="ACCENT COLORS" Classes="eyebrow"/>
+          <ItemsControl ItemsSource="{Binding Accents}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid ColumnDefinitions="150,*,Auto,Auto" ColumnSpacing="14" Margin="0,0,0,10">
+                  <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <Border Width="18" Height="18" CornerRadius="9" Background="{Binding SwatchBrush}"/>
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                  </StackPanel>
+                  <TextBox Grid.Column="1" Text="{Binding HexText}" PlaceholderText="#RRGGBB" VerticalContentAlignment="Center"/>
+                  <controls:ManualColorPicker Grid.Column="2" SelectedColor="{Binding SelectedColor, Mode=TwoWay}" ColorApplied="AccentColorApplied" VerticalAlignment="Center"/>
+                  <Button Grid.Column="3" Classes="module-action" Content="APPLY" Command="{Binding ApplyCommand}" Padding="16,8"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Text="Enter a hex value such as #395B64, then press APPLY. Changes are saved in the local SQLite database." Classes="muted" FontSize="12" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="panel">
+        <StackPanel Spacing="16">
+          <TextBlock Text="CPU MODULE STYLES" Classes="eyebrow"/>
+          <TextBlock Text="Every module has an independent palette for each style. Open any swatch to edit it manually, then press APPLY." Classes="muted" FontSize="12" TextWrapping="Wrap"/>
+          <ItemsControl ItemsSource="{Binding Widgets}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Spacing="10" Margin="0,0,0,16">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+                    <StackPanel Spacing="4">
+                    <TextBlock Text="{Binding Title}" FontSize="17" FontWeight="SemiBold"/>
+                      <TextBlock Text="Position and size are saved when you finish dragging the module." Classes="muted" FontSize="12"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                      <TextBlock Text="ACTIVE STYLE" Classes="eyebrow" VerticalAlignment="Center"/>
+                      <ComboBox ItemsSource="{Binding StyleOptions}" SelectedItem="{Binding Style}" Width="110"/>
+                    </StackPanel>
+                  </Grid>
+                  <ItemsControl ItemsSource="{Binding Styles}" x:CompileBindings="False">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Grid ColumnDefinitions="78,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="7" Margin="0,0,0,6">
+                          <TextBlock Text="{Binding StyleLabel}" Classes="eyebrow" VerticalAlignment="Center"/>
+                          <TextBlock Grid.Column="1" Text="BG" Classes="muted" FontSize="10" VerticalAlignment="Center"/>
+                          <controls:ManualColorPicker Grid.Column="2" SelectedColor="{Binding BackgroundColor, Mode=TwoWay}" ColorApplied="StyleColorApplied" ToolTip.Tip="Background"/>
+                          <TextBlock Grid.Column="3" Text="TEXT" Classes="muted" FontSize="10" VerticalAlignment="Center"/>
+                          <controls:ManualColorPicker Grid.Column="4" SelectedColor="{Binding TextColor, Mode=TwoWay}" ColorApplied="StyleColorApplied" ToolTip.Tip="Text"/>
+                          <TextBlock Grid.Column="5" Text="MUTED" Classes="muted" FontSize="10" VerticalAlignment="Center"/>
+                          <controls:ManualColorPicker Grid.Column="6" SelectedColor="{Binding MutedColor, Mode=TwoWay}" ColorApplied="StyleColorApplied" ToolTip.Tip="Muted text"/>
+                          <TextBlock Grid.Column="7" Text="BORDER" Classes="muted" FontSize="10" VerticalAlignment="Center"/>
+                          <controls:ManualColorPicker Grid.Column="8" SelectedColor="{Binding BorderColor, Mode=TwoWay}" ColorApplied="StyleColorApplied" ToolTip.Tip="Border"/>
+                          <TextBlock Grid.Column="9" Text="ACCENT" Classes="muted" FontSize="10" VerticalAlignment="Center"/>
+                          <controls:ManualColorPicker Grid.Column="10" SelectedColor="{Binding AccentColor, Mode=TwoWay}" ColorApplied="StyleColorApplied" ToolTip.Tip="Graph and accent"/>
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
