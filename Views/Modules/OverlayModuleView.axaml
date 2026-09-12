@@ -1,1 +1,46 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:ExteraMonitor.ViewModels.Modules" x:Class="ExteraMonitor.Views.Modules.OverlayModuleView" x:DataType="vm:OverlayModuleViewModel"><ScrollViewer><StackPanel Margin="42,34,42,42" Spacing="24"><StackPanel Spacing="6"><TextBlock Text="Overlay" FontSize="31" FontWeight="SemiBold"/><TextBlock Text="Configure a minimal telemetry overlay for an unobtrusive always-on-top view." Classes="muted" FontSize="14"/></StackPanel><Grid ColumnDefinitions="1.1*,*" ColumnSpacing="18"><Border Classes="panel"><StackPanel Spacing="20"><Grid ColumnDefinitions="*,Auto"><StackPanel><TextBlock Text="DESKTOP OVERLAY" FontSize="19" FontWeight="SemiBold"/><TextBlock Text="Enable the compact monitoring layer." Classes="muted" FontSize="12" Margin="0,4,0,0"/></StackPanel><ToggleSwitch Grid.Column="1" IsChecked="{Binding IsEnabled}" VerticalAlignment="Center"/></Grid><Border Height="1" Background="#A5C9CA"/><Grid ColumnDefinitions="*,Auto"><TextBlock Text="Always on top"/><ToggleSwitch Grid.Column="1" IsChecked="{Binding AlwaysOnTop}"/></Grid><Grid ColumnDefinitions="*,Auto"><TextBlock Text="Show CPU usage"/><ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowCpu}"/></Grid><Grid ColumnDefinitions="*,Auto"><TextBlock Text="Show memory usage"/><ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowMemory}"/></Grid><Grid ColumnDefinitions="*,Auto"><TextBlock Text="Show network throughput"/><ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowNetwork}"/></Grid></StackPanel></Border><Border Grid.Column="1" Background="#2C3333" CornerRadius="18" Padding="24" IsVisible="{Binding IsEnabled}"><StackPanel Spacing="16"><TextBlock Text="OVERLAY PREVIEW" Foreground="#A5C9CA" FontSize="10" FontWeight="Bold" LetterSpacing="2"/><Grid ColumnDefinitions="*,Auto"><StackPanel><TextBlock Text="SYSTEM PULSE" Foreground="#E7F6F2" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="LIVE • LOCAL" Foreground="#A5C9CA" FontSize="10" LetterSpacing="1"/></StackPanel><Border Grid.Column="1" Background="#395B64" CornerRadius="8" Padding="8,4"><TextBlock Text="ACTIVE" Foreground="#E7F6F2" FontSize="10"/></Border></Grid><Border Height="1" Background="#395B64"/><StackPanel IsVisible="{Binding ShowCpu}" Spacing="3"><TextBlock Text="CPU" Foreground="#A5C9CA" FontSize="10" LetterSpacing="1"/><TextBlock Text="{Binding Cpu, StringFormat={}{0:0.0}%}" Foreground="#E7F6F2" FontSize="27"/></StackPanel><StackPanel IsVisible="{Binding ShowMemory}" Spacing="3"><TextBlock Text="MEMORY" Foreground="#A5C9CA" FontSize="10" LetterSpacing="1"/><TextBlock Text="{Binding Memory, StringFormat={}{0:0.0}%}" Foreground="#E7F6F2" FontSize="27"/></StackPanel><StackPanel IsVisible="{Binding ShowNetwork}" Spacing="3"><TextBlock Text="DOWNLOAD" Foreground="#A5C9CA" FontSize="10" LetterSpacing="1"/><TextBlock Text="{Binding Download, StringFormat={}{0:0.0} Mbps}" Foreground="#E7F6F2" FontSize="27"/></StackPanel></StackPanel></Border></Grid><Border Classes="card"><StackPanel Spacing="8"><TextBlock Text="ABOUT THE OVERLAY" Classes="eyebrow"/><TextBlock Text="The preview mirrors the compact monitor layout. Its options are isolated in this module, ready to be connected to a dedicated transparent overlay window when you want a second desktop surface." Classes="muted" TextWrapping="Wrap"/></StackPanel></Border></StackPanel></ScrollViewer></UserControl>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ExteraMonitor.ViewModels.Modules"
+             x:Class="ExteraMonitor.Views.Modules.OverlayModuleView"
+             x:CompileBindings="False">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="24,22,24,28" Spacing="16">
+      <StackPanel Spacing="4">
+        <TextBlock Text="Overlay" FontSize="30" FontWeight="SemiBold"/>
+        <TextBlock Text="A compact, independent desktop telemetry window." Classes="muted" FontSize="13" TextWrapping="Wrap"/>
+      </StackPanel>
+
+      <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+        <Border Classes="panel">
+          <StackPanel Spacing="16">
+            <StackPanel Spacing="3"><TextBlock Text="OVERLAY CONTROLS" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="Changes apply to the floating window immediately." Classes="muted" FontSize="11" TextWrapping="Wrap"/></StackPanel>
+            <Grid ColumnDefinitions="*,Auto"><StackPanel Spacing="2"><TextBlock Text="Show desktop overlay" FontWeight="SemiBold"/><TextBlock Text="Open or hide the compact window" Classes="muted" FontSize="10"/></StackPanel><ToggleSwitch Grid.Column="1" IsChecked="{Binding IsEnabled}" VerticalAlignment="Center"/></Grid>
+            <Border Height="1" Background="{DynamicResource ThemeSoftBrush}"/>
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Keep above other windows" VerticalAlignment="Center"/><ToggleSwitch Grid.Column="1" IsChecked="{Binding AlwaysOnTop}"/></Grid>
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="CPU utilization" VerticalAlignment="Center"/><ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowCpu}"/></Grid>
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Memory utilization" VerticalAlignment="Center"/><ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowMemory}"/></Grid>
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Network throughput" VerticalAlignment="Center"/><ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowNetwork}"/></Grid>
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Column="1" Background="{DynamicResource ThemeChromeBrush}" BorderBrush="{DynamicResource ThemeAccentBrush}" BorderThickness="1" CornerRadius="17" Padding="18" Opacity="{Binding PreviewOpacity}">
+          <StackPanel Spacing="13">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+              <StackPanel Spacing="3"><TextBlock Text="LIVE PREVIEW" Foreground="{DynamicResource ThemeSoftBrush}" FontSize="10" FontWeight="Bold" LetterSpacing="1.5"/><TextBlock Text="EXTERA MONITOR" Foreground="{DynamicResource ThemeWindowBrush}" FontSize="15" FontWeight="SemiBold"/></StackPanel>
+              <Border Grid.Column="1" Background="{DynamicResource ThemeAccentBrush}" CornerRadius="7" Padding="8,5" VerticalAlignment="Center"><TextBlock Text="{Binding StatusLabel}" Foreground="{DynamicResource ThemeWindowBrush}" FontSize="9" FontWeight="Bold"/></Border>
+            </Grid>
+            <Border Height="1" Background="{DynamicResource ThemeAccentBrush}"/>
+            <StackPanel IsVisible="{Binding ShowCpu}" Spacing="3"><TextBlock Text="CPU LOAD" Foreground="{DynamicResource ThemeSoftBrush}" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding Cpu, StringFormat={}{0:0.0}%}" Foreground="{DynamicResource ThemeWindowBrush}" FontSize="25" FontWeight="SemiBold"/></StackPanel>
+            <StackPanel IsVisible="{Binding ShowMemory}" Spacing="3"><TextBlock Text="MEMORY" Foreground="{DynamicResource ThemeSoftBrush}" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding MemoryLabel}" Foreground="{DynamicResource ThemeWindowBrush}" FontSize="25" FontWeight="SemiBold"/></StackPanel>
+            <StackPanel IsVisible="{Binding ShowNetwork}" Spacing="3"><TextBlock Text="NETWORK" Foreground="{DynamicResource ThemeSoftBrush}" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding NetworkText}" Foreground="{DynamicResource ThemeWindowBrush}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/></StackPanel>
+            <TextBlock Text="No metrics selected" Foreground="{DynamicResource ThemeSoftBrush}" FontSize="12" IsVisible="{Binding HasNoVisibleMetrics}"/>
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <Border Classes="telemetry-card" Padding="14">
+        <StackPanel Spacing="5"><TextBlock Text="WINDOW BEHAVIOR" Classes="eyebrow"/><TextBlock Text="The floating window can be dragged by its header and hidden with its close button. Its visibility and topmost state are controlled above; telemetry follows the same live snapshot as the main app." Classes="muted" FontSize="12" TextWrapping="Wrap"/></StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

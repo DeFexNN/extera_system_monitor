@@ -1,1 +1,66 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:ExteraMonitor.ViewModels.Modules" x:Class="ExteraMonitor.Views.Modules.MemoryModuleView" x:DataType="vm:MemoryModuleViewModel"><ScrollViewer><StackPanel Margin="42,34,42,42" Spacing="24"><StackPanel Spacing="6"><TextBlock Text="Memory" FontSize="31" FontWeight="SemiBold"/><TextBlock Text="Physical memory pressure and application working sets." Classes="muted" FontSize="14"/></StackPanel><Grid ColumnDefinitions="1.25*,*" ColumnSpacing="18"><Border Classes="panel"><StackPanel Spacing="22"><TextBlock Text="MEMORY IN USE" Classes="eyebrow"/><TextBlock Text="{Binding Used}" FontSize="64" FontWeight="SemiBold"/><TextBlock Text="{Binding Total}" Classes="muted"/><ProgressBar Value="{Binding Usage}" Maximum="100" Height="14"/><Grid ColumnDefinitions="*,*,*"><StackPanel><TextBlock Text="USAGE" Classes="eyebrow"/><TextBlock Text="{Binding Usage, StringFormat={}{0:0.0}%}" FontSize="21"/></StackPanel><StackPanel Grid.Column="1"><TextBlock Text="AVAILABLE" Classes="eyebrow"/><TextBlock Text="{Binding Available}" FontSize="21"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="TOTAL" Classes="eyebrow"/><TextBlock Text="{Binding Total}" FontSize="21"/></StackPanel></Grid></StackPanel></Border><Border Classes="card" Grid.Column="1"><StackPanel Spacing="18"><TextBlock Text="MEMORY STATUS" Classes="eyebrow"/><TextBlock Text="HEALTHY" FontSize="29" FontWeight="SemiBold" Foreground="#395B64"/><TextBlock Text="No paging pressure is currently detected." Classes="muted" TextWrapping="Wrap"/><TextBlock Text="Swap activity: idle" Classes="muted" FontSize="12"/></StackPanel></Border></Grid><Border Classes="panel"><StackPanel Spacing="14"><TextBlock Text="MEMORY PRESSURE" FontSize="19" FontWeight="SemiBold"/><Grid ColumnDefinitions="*,Auto"><TextBlock Text="In use"/><TextBlock Grid.Column="1" Text="{Binding Used}"/></Grid><ProgressBar Value="{Binding Usage}" Maximum="100"/><Grid ColumnDefinitions="*,Auto"><TextBlock Text="Available"/><TextBlock Grid.Column="1" Text="{Binding Available}"/></Grid><TextBlock Text="Values are sampled from Windows physical memory status." Classes="muted" FontSize="12"/></StackPanel></Border></StackPanel></ScrollViewer></UserControl>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ExteraMonitor.ViewModels.Modules"
+             xmlns:controls="using:ExteraMonitor.Views.Controls"
+             x:Class="ExteraMonitor.Views.Modules.MemoryModuleView"
+             x:CompileBindings="False">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="24,22,24,28" Spacing="16">
+      <StackPanel Spacing="4">
+        <TextBlock Text="Memory" FontSize="30" FontWeight="SemiBold"/>
+        <TextBlock Text="Physical RAM utilization, capacity and the largest sampled process working sets." Classes="muted" FontSize="13" TextWrapping="Wrap"/>
+      </StackPanel>
+
+      <WrapPanel Orientation="Horizontal">
+        <Border Classes="panel" Width="270" MinHeight="210" Margin="0,0,12,12">
+          <StackPanel Spacing="13">
+            <TextBlock Text="IN USE" Classes="eyebrow"/>
+            <TextBlock Text="{Binding Used}" FontSize="42" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+            <ProgressBar Value="{Binding Usage}" Maximum="100" Height="12" IsVisible="{Binding HasData}"/>
+            <TextBlock Text="{Binding UsageBand}" Classes="muted" FontSize="10"/>
+          </StackPanel>
+        </Border>
+        <Border Classes="telemetry-card" Width="200" MinHeight="210" Padding="18" Margin="0,0,12,12">
+          <StackPanel Spacing="8" VerticalAlignment="Center"><TextBlock Text="AVAILABLE" Classes="eyebrow"/><TextBlock Text="{Binding Available}" FontSize="27" FontWeight="SemiBold"/><TextBlock Text="Physical memory not currently in use" Classes="muted" FontSize="11" TextWrapping="Wrap"/></StackPanel>
+        </Border>
+        <Border Classes="telemetry-card" Width="200" MinHeight="210" Padding="18" Margin="0,0,12,12">
+          <StackPanel Spacing="8" VerticalAlignment="Center"><TextBlock Text="INSTALLED RAM" Classes="eyebrow"/><TextBlock Text="{Binding Total}" FontSize="27" FontWeight="SemiBold"/><TextBlock Text="Reported by Windows memory status" Classes="muted" FontSize="11" TextWrapping="Wrap"/></StackPanel>
+        </Border>
+      </WrapPanel>
+
+      <Border Classes="panel">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <StackPanel Spacing="3"><TextBlock Text="MEMORY UTILIZATION" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="Recent physical-RAM utilization · 30 samples" Classes="muted" FontSize="11"/></StackPanel>
+            <TextBlock Grid.Column="1" Text="{Binding UtilizationLabel}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
+          </Grid>
+          <controls:TelemetryGraph Height="170" Values="{Binding History}" Stroke="{DynamicResource ThemeAccentBrush}" Minimum="0" Maximum="100" IsVisible="{Binding HasData}"/>
+          <TextBlock Text="Windows GlobalMemoryStatusEx · bounded 30-sample history" Classes="muted" FontSize="10"/>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="panel">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <StackPanel Spacing="3"><TextBlock Text="LARGEST SAMPLED WORKING SETS" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="Process rows currently exposed by the system sampler, ordered by resident memory." Classes="muted" FontSize="11" TextWrapping="Wrap"/></StackPanel>
+            <TextBlock Grid.Column="1" Text="{Binding TopConsumers.Count, StringFormat={}{0} ROWS}" Classes="eyebrow" VerticalAlignment="Center"/>
+          </Grid>
+          <ItemsControl ItemsSource="{Binding TopConsumers}" IsVisible="{Binding HasConsumers}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="0,1,0,0" Padding="10,8">
+                  <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="18">
+                    <StackPanel Spacing="2"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Status}" Classes="muted" FontSize="10"/></StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="2" HorizontalAlignment="Right"><TextBlock Text="WORKING SET" Classes="eyebrow" FontSize="9"/><TextBlock Text="{Binding Memory, StringFormat={}{0:0} MB}" FontSize="12"/></StackPanel>
+                    <StackPanel Grid.Column="2" Spacing="2" HorizontalAlignment="Right"><TextBlock Text="CPU" Classes="eyebrow" FontSize="9"/><TextBlock Text="{Binding Cpu, StringFormat={}{0:0.0}%}" FontSize="12"/></StackPanel>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Text="No process rows are currently available." Classes="muted" IsVisible="{Binding HasNoConsumers}"/>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

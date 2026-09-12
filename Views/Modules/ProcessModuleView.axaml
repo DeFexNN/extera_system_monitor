@@ -1,1 +1,49 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:ExteraMonitor.ViewModels.Modules" x:Class="ExteraMonitor.Views.Modules.ProcessModuleView" x:DataType="vm:ProcessModuleViewModel"><ScrollViewer><StackPanel Margin="42,34,42,42" Spacing="24"><Grid ColumnDefinitions="*,Auto"><StackPanel Spacing="6"><TextBlock Text="Processes" FontSize="31" FontWeight="SemiBold"/><TextBlock Text="Most active local processes in the current session." Classes="muted" FontSize="14"/></StackPanel><Border Grid.Column="1" Background="#E7F6F2" CornerRadius="14" Padding="16,10" VerticalAlignment="Center"><StackPanel><TextBlock Text="{Binding Count, StringFormat={}{0} active}" FontWeight="SemiBold"/><TextBlock Text="processes detected" Classes="muted" FontSize="11"/></StackPanel></Border></Grid><Border Classes="panel"><Grid RowDefinitions="Auto,*"><Grid ColumnDefinitions="2*,*,*,*" Margin="0,0,0,12"><TextBlock Text="PROCESS" Classes="eyebrow"/><TextBlock Grid.Column="1" Text="USER" Classes="eyebrow"/><TextBlock Grid.Column="2" Text="CPU" Classes="eyebrow"/><TextBlock Grid.Column="3" Text="MEMORY" Classes="eyebrow"/></Grid><ItemsControl Grid.Row="1" ItemsSource="{Binding Items}"><ItemsControl.ItemTemplate><DataTemplate><Border BorderBrush="#A5C9CA" BorderThickness="0,1,0,0" Padding="0,13"><Grid ColumnDefinitions="2*,*,*,*"><StackPanel><TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"/><TextBlock Text="{Binding Status}" Classes="muted" FontSize="11"/></StackPanel><TextBlock Grid.Column="1" Text="{Binding User}" VerticalAlignment="Center" Classes="muted"/><TextBlock Grid.Column="2" Text="{Binding Cpu, StringFormat={}{0:0.0}%}" VerticalAlignment="Center"/><TextBlock Grid.Column="3" Text="{Binding Memory, StringFormat={}{0:0.0} MB}" VerticalAlignment="Center"/></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></Grid></Border></StackPanel></ScrollViewer></UserControl>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ExteraMonitor.ViewModels.Modules"
+             x:Class="ExteraMonitor.Views.Modules.ProcessModuleView"
+             x:CompileBindings="False">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="24,22,24,28" Spacing="16">
+      <StackPanel Spacing="4">
+        <TextBlock Text="Processes" FontSize="30" FontWeight="SemiBold"/>
+        <TextBlock Text="Search and sort the process rows exposed by the local sampler." Classes="muted" FontSize="13" TextWrapping="Wrap"/>
+      </StackPanel>
+
+      <WrapPanel Orientation="Horizontal">
+        <Border Classes="telemetry-card" Width="205" MinHeight="122" Padding="15" Margin="0,0,10,10"><StackPanel Spacing="6"><TextBlock Text="SYSTEM PROCESS COUNT" Classes="eyebrow" FontSize="9"/><TextBlock Text="{Binding Count}" FontSize="28" FontWeight="SemiBold"/><TextBlock Text="All processes counted by Windows" Classes="muted" FontSize="10"/></StackPanel></Border>
+        <Border Classes="telemetry-card" Width="205" MinHeight="122" Padding="15" Margin="0,0,10,10"><StackPanel Spacing="6"><TextBlock Text="SAMPLED CPU" Classes="eyebrow" FontSize="9"/><TextBlock Text="{Binding CpuSummary}" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="Across displayed rows" Classes="muted" FontSize="10"/></StackPanel></Border>
+        <Border Classes="telemetry-card" Width="205" MinHeight="122" Padding="15" Margin="0,0,10,10"><StackPanel Spacing="6"><TextBlock Text="SAMPLED MEMORY" Classes="eyebrow" FontSize="9"/><TextBlock Text="{Binding MemorySummary}" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="Resident working sets" Classes="muted" FontSize="10"/></StackPanel></Border>
+      </WrapPanel>
+
+      <Border Classes="panel">
+        <StackPanel Spacing="11">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <StackPanel Spacing="3"><TextBlock Text="PROCESS TABLE" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="{Binding CountSummary}" Classes="muted" FontSize="11"/></StackPanel>
+            <ComboBox Grid.Column="1" Width="125" ItemsSource="{Binding SortModes}" SelectedItem="{Binding SortMode}"/>
+          </Grid>
+          <TextBox Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="Search sampled process name or user…"/>
+          <ItemsControl ItemsSource="{Binding Items}" IsVisible="{Binding HasItems}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="0,1,0,0" Padding="11,10">
+                  <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="16">
+                    <StackPanel Spacing="3" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                      <StackPanel Orientation="Horizontal"><TextBlock Text="{Binding User}" Classes="muted" FontSize="10"/><TextBlock Text=" · " Classes="muted" FontSize="10"/><TextBlock Text="{Binding Status}" Classes="muted" FontSize="10"/></StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="2" HorizontalAlignment="Right" VerticalAlignment="Center"><TextBlock Text="CPU" Classes="eyebrow" FontSize="9"/><TextBlock Text="{Binding Cpu, StringFormat={}{0:0.0}%}" FontSize="12"/></StackPanel>
+                    <StackPanel Grid.Column="2" Spacing="2" HorizontalAlignment="Right" VerticalAlignment="Center"><TextBlock Text="MEMORY" Classes="eyebrow" FontSize="9"/><TextBlock Text="{Binding Memory, StringFormat={}{0:0} MB}" FontSize="12"/></StackPanel>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Border IsVisible="{Binding HasNoItems}" Background="{DynamicResource ThemeSoftBrush}" CornerRadius="10" Padding="16">
+            <StackPanel Spacing="5"><TextBlock Text="NO MATCHING PROCESS ROWS" Classes="eyebrow"/><TextBlock Text="Change the search text or wait for the next local sample. The sampler currently exposes a bounded set of the most CPU-active processes." Classes="muted" FontSize="12" TextWrapping="Wrap"/></StackPanel>
+          </Border>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

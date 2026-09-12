@@ -1,1 +1,62 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:ExteraMonitor.ViewModels.Modules" x:Class="ExteraMonitor.Views.Modules.StorageModuleView" x:DataType="vm:StorageModuleViewModel"><ScrollViewer><StackPanel Margin="42,34,42,42" Spacing="24"><StackPanel Spacing="6"><TextBlock Text="Storage" FontSize="31" FontWeight="SemiBold"/><TextBlock Text="Up to three ready local disks are detected automatically." Classes="muted" FontSize="14"/></StackPanel><Grid ColumnDefinitions="1.3*,*" ColumnSpacing="18"><Border Classes="panel"><StackPanel Spacing="22"><TextBlock Text="{Binding PrimaryName}" Classes="eyebrow"/><TextBlock Text="{Binding Used}" FontSize="64" FontWeight="SemiBold"/><TextBlock Text="{Binding Total}" Classes="muted"/><ProgressBar Value="{Binding Usage}" Maximum="100" Height="14"/><TextBlock Text="Capacity used on the first detected volume." Classes="muted" FontSize="12"/></StackPanel></Border><Border Classes="card" Grid.Column="1"><StackPanel Spacing="18"><TextBlock Text="DISK DISCOVERY" Classes="eyebrow"/><TextBlock Text="{Binding Disks.Count, StringFormat={}{0} READY}" FontSize="29" FontWeight="SemiBold" Foreground="#395B64"/><TextBlock Text="Fixed and removable disks are sampled without elevated privileges." Classes="muted" TextWrapping="Wrap"/><TextBlock Text="Maximum displayed: 3 drives" Classes="muted" FontSize="12"/></StackPanel></Border></Grid><Border Classes="panel"><StackPanel Spacing="14"><TextBlock Text="DETECTED VOLUMES" FontSize="19" FontWeight="SemiBold"/><ItemsControl ItemsSource="{Binding Disks}"><ItemsControl.ItemTemplate><DataTemplate><Border BorderBrush="#A5C9CA" BorderThickness="0,1,0,0" Padding="0,14"><Grid ColumnDefinitions="*,Auto"><StackPanel Spacing="5"><Grid ColumnDefinitions="Auto,*"><TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding VolumeLabel}" Classes="muted" Margin="10,2,0,0"/></Grid><ProgressBar Value="{Binding UsagePercent}" Maximum="100" Height="9"/></StackPanel><StackPanel Grid.Column="1" HorizontalAlignment="Right"><TextBlock Text="{Binding UsedGigabytes, StringFormat={}{0:0.0} GB}" FontWeight="SemiBold"/><TextBlock Text="{Binding TotalGigabytes, StringFormat={}{0:0.0} GB total}" Classes="muted" FontSize="11" HorizontalAlignment="Right"/></StackPanel></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel></Border></StackPanel></ScrollViewer></UserControl>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ExteraMonitor.ViewModels.Modules"
+             x:Class="ExteraMonitor.Views.Modules.StorageModuleView"
+             x:CompileBindings="False">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="24,22,24,28" Spacing="16">
+      <StackPanel Spacing="4">
+        <TextBlock Text="Storage" FontSize="30" FontWeight="SemiBold"/>
+        <TextBlock Text="Capacity and utilization for ready local volumes exposed by Windows." Classes="muted" FontSize="13" TextWrapping="Wrap"/>
+      </StackPanel>
+
+      <WrapPanel Orientation="Horizontal">
+        <Border Classes="panel" Width="280" MinHeight="206" Margin="0,0,12,12">
+          <StackPanel Spacing="12">
+            <TextBlock Text="PRIMARY VOLUME" Classes="eyebrow"/>
+            <TextBlock Text="{Binding PrimaryName}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding Used}" FontSize="38" FontWeight="SemiBold"/>
+            <ProgressBar Value="{Binding Usage}" Maximum="100" Height="12" IsVisible="{Binding HasData}"/>
+            <TextBlock Text="{Binding Total}" Classes="muted" FontSize="11"/>
+          </StackPanel>
+        </Border>
+        <Border Classes="telemetry-card" Width="210" MinHeight="206" Padding="18" Margin="0,0,12,12">
+          <StackPanel Spacing="8" VerticalAlignment="Center"><TextBlock Text="ALL SAMPLED VOLUMES" Classes="eyebrow"/><TextBlock Text="{Binding AllVolumesSummary}" FontSize="25" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="Used / total capacity summed across listed volumes" Classes="muted" FontSize="11" TextWrapping="Wrap"/></StackPanel>
+        </Border>
+        <Border Classes="telemetry-card" Width="190" MinHeight="206" Padding="18" Margin="0,0,12,12">
+          <StackPanel Spacing="8" VerticalAlignment="Center"><TextBlock Text="READY VOLUMES" Classes="eyebrow"/><TextBlock Text="{Binding DiskCount}" FontSize="32" FontWeight="SemiBold"/><TextBlock Text="{Binding CapacitySummary}" Classes="muted" FontSize="11" TextWrapping="Wrap"/></StackPanel>
+        </Border>
+      </WrapPanel>
+
+      <Border Classes="panel">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <StackPanel Spacing="3"><TextBlock Text="DETECTED VOLUMES" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="The sampler lists up to three ready fixed or removable volumes." Classes="muted" FontSize="11" TextWrapping="Wrap"/></StackPanel>
+            <TextBlock Grid.Column="1" Text="{Binding DiskCount, StringFormat={}{0} / 3}" Classes="eyebrow" VerticalAlignment="Center"/>
+          </Grid>
+          <ItemsControl ItemsSource="{Binding Disks}" IsVisible="{Binding HasDisks}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="0,1,0,0" Padding="10,12">
+                  <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                      <StackPanel Spacing="2"><TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"/><TextBlock Text="{Binding VolumeLabel}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis"/></StackPanel>
+                      <StackPanel Grid.Column="1" Spacing="2" HorizontalAlignment="Right"><TextBlock Text="{Binding UsedGigabytes, StringFormat={}{0:0.0} GB used}" FontWeight="SemiBold"/><TextBlock Text="{Binding TotalGigabytes, StringFormat={}{0:0.0} GB total}" Classes="muted" FontSize="11" HorizontalAlignment="Right"/></StackPanel>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                      <ProgressBar Value="{Binding UsagePercent}" Maximum="100" Height="9" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="1" Text="{Binding UsagePercent, StringFormat={}{0:0.0}% used}" FontSize="11"/>
+                    </Grid>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Border IsVisible="{Binding HasNoDisks}" Background="{DynamicResource ThemeSoftBrush}" CornerRadius="10" Padding="16">
+            <StackPanel Spacing="5"><TextBlock Text="NO READY VOLUME" Classes="eyebrow"/><TextBlock Text="No fixed or removable volume is currently available to the sampler. Values are shown as N/A instead of zero." Classes="muted" FontSize="12" TextWrapping="Wrap"/></StackPanel>
+          </Border>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

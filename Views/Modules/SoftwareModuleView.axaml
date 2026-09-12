@@ -1,1 +1,60 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:ExteraMonitor.ViewModels.Modules" x:Class="ExteraMonitor.Views.Modules.SoftwareModuleView" x:DataType="vm:SoftwareModuleViewModel"><ScrollViewer><StackPanel Margin="42,34,42,42" Spacing="24"><StackPanel Spacing="6"><TextBlock Text="Software" FontSize="31" FontWeight="SemiBold"/><TextBlock Text="A reserved workspace for future system and application tooling." Classes="muted" FontSize="14"/></StackPanel><Border Classes="card"><StackPanel Spacing="8"><TextBlock Text="FUTURE MODULES" Classes="eyebrow"/><TextBlock Text="The monitoring core is ready; this page keeps future feature work isolated from the live telemetry pipeline." TextWrapping="Wrap"/></StackPanel></Border><ItemsControl ItemsSource="{Binding Features}"><ItemsControl.ItemTemplate><DataTemplate><Border Classes="panel" Margin="0,0,0,14"><Grid ColumnDefinitions="*,Auto"><StackPanel Spacing="6"><TextBlock Text="{Binding Name}" FontSize="19" FontWeight="SemiBold"/><TextBlock Text="{Binding Description}" Classes="muted"/></StackPanel><Border Grid.Column="1" Background="#A5C9CA" CornerRadius="10" Padding="11,6" VerticalAlignment="Center"><TextBlock Text="{Binding Status}" Foreground="#2C3333" FontSize="11" FontWeight="SemiBold"/></Border></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel></ScrollViewer></UserControl>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ExteraMonitor.ViewModels.Modules"
+             x:Class="ExteraMonitor.Views.Modules.SoftwareModuleView"
+             x:CompileBindings="False">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="24,22,24,28" Spacing="16">
+      <StackPanel Spacing="4">
+        <TextBlock Text="Software" FontSize="30" FontWeight="SemiBold"/>
+        <TextBlock Text="Read-only inventory of applications registered on this Windows installation." Classes="muted" FontSize="13" TextWrapping="Wrap"/>
+      </StackPanel>
+
+      <WrapPanel Orientation="Horizontal">
+        <Border Classes="telemetry-card" Width="230" MinHeight="126" Padding="16" Margin="0,0,10,10"><StackPanel Spacing="6"><TextBlock Text="INSTALLED ENTRIES" Classes="eyebrow" FontSize="9"/><TextBlock Text="{Binding InstalledCount}" FontSize="29" FontWeight="SemiBold"/><TextBlock Text="Unique display-name/version pairs" Classes="muted" FontSize="10"/></StackPanel></Border>
+        <Border Classes="telemetry-card" Width="230" MinHeight="126" Padding="16" Margin="0,0,10,10"><StackPanel Spacing="6"><TextBlock Text="VISIBLE RESULTS" Classes="eyebrow" FontSize="9"/><TextBlock Text="{Binding VisibleCount}" FontSize="29" FontWeight="SemiBold"/><TextBlock Text="{Binding InventorySummary}" Classes="muted" FontSize="10" TextWrapping="Wrap"/></StackPanel></Border>
+      </WrapPanel>
+
+      <Border Classes="panel">
+        <StackPanel Spacing="11">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <StackPanel Spacing="3"><TextBlock Text="APPLICATION INVENTORY" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="{Binding StatusText}" Classes="muted" FontSize="11" TextWrapping="Wrap"/></StackPanel>
+            <Button Grid.Column="1" Classes="module-action" Content="REFRESH" Command="{Binding RefreshCommand}" IsEnabled="{Binding CanRefresh}" VerticalAlignment="Center"/>
+          </Grid>
+          <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsRefreshing}" Height="5"/>
+          <TextBox Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="Filter by application name or publisher…"/>
+          <Border Background="{DynamicResource ThemeSoftBrush}" CornerRadius="8" Padding="8,7">
+            <Grid ColumnDefinitions="2*,1.2*,Auto,Auto" ColumnSpacing="12">
+              <TextBlock Text="APPLICATION" Classes="eyebrow" FontSize="9"/>
+              <TextBlock Grid.Column="1" Text="PUBLISHER" Classes="eyebrow" FontSize="9"/>
+              <TextBlock Grid.Column="2" Text="VERSION" Classes="eyebrow" FontSize="9"/>
+              <TextBlock Grid.Column="3" Text="SIZE" Classes="eyebrow" FontSize="9" HorizontalAlignment="Right"/>
+            </Grid>
+          </Border>
+          <ScrollViewer MaxHeight="520" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+            <ItemsControl ItemsSource="{Binding Items}" IsVisible="{Binding HasItems}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="0,0,0,1" Padding="8,10">
+                    <Grid ColumnDefinitions="2*,1.2*,Auto,Auto" ColumnSpacing="12">
+                      <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="1" Text="{Binding PublisherLabel}" Classes="muted" FontSize="10" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="2" Text="{Binding VersionLabel}" FontSize="10" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="3" Text="{Binding SizeLabel}" Classes="muted" FontSize="10" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Border IsVisible="{Binding HasNoItems}" Background="{DynamicResource ThemeSoftBrush}" CornerRadius="10" Padding="16" Margin="0,8,0,0">
+              <TextBlock Text="{Binding EmptyStateText}" Classes="muted" FontSize="12" TextWrapping="Wrap"/>
+            </Border>
+            </StackPanel>
+          </ScrollViewer>
+          <TextBlock Text="This inventory reads uninstall metadata from the current-user and machine registry views. It does not uninstall, update, or modify applications." Classes="muted" FontSize="10" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

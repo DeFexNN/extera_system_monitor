@@ -21,7 +21,7 @@
           <ItemsControl ItemsSource="{Binding Colors}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
-                <Grid ColumnDefinitions="180,*,Auto,Auto" ColumnSpacing="14" Margin="0,0,0,12">
+                    <Grid ColumnDefinitions="132,*,Auto,Auto" ColumnSpacing="10" Margin="0,0,0,12">
                   <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                     <Border Width="22" Height="22" CornerRadius="11" Background="{Binding SwatchBrush}" BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="1"/>
                     <StackPanel Spacing="2">
@@ -36,6 +36,34 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="panel">
+        <StackPanel Spacing="12">
+          <StackPanel Spacing="4">
+            <TextBlock Text="LIVE THEME PREVIEW" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock Text="This sample uses the same four application resources as the window, navigation, cards and controls." Classes="muted" FontSize="12" TextWrapping="Wrap"/>
+          </StackPanel>
+          <Border Background="{DynamicResource ThemeChromeBrush}" CornerRadius="13" Padding="14">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+              <StackPanel Spacing="8">
+                <TextBlock Text="EXTERA MONITOR" Foreground="{DynamicResource ThemeWindowBrush}" FontSize="13" FontWeight="Bold" LetterSpacing="1.2"/>
+                <Border Background="{DynamicResource ThemeWindowBrush}" CornerRadius="9" Padding="12">
+                  <StackPanel Spacing="7">
+                    <TextBlock Text="Window surface" Foreground="{DynamicResource ThemeChromeBrush}" FontWeight="SemiBold"/>
+                    <TextBlock Text="Secondary text and progress tracks" Foreground="{DynamicResource ThemeAccentBrush}" FontSize="11"/>
+                    <ProgressBar Value="68" Maximum="100"/>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+              <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center">
+                <Button Classes="module-action" Content="ACCENT BUTTON"/>
+                <Border Height="24" CornerRadius="8" Background="{DynamicResource ThemeSoftBrush}"/>
+                <Border Height="24" CornerRadius="8" Background="{DynamicResource ThemeAccentBrush}"/>
+              </StackPanel>
+            </Grid>
+          </Border>
         </StackPanel>
       </Border>
     </StackPanel>

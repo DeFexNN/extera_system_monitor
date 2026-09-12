@@ -1,1 +1,55 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:ExteraMonitor.ViewModels.Modules" x:Class="ExteraMonitor.Views.Modules.SensorsModuleView" x:DataType="vm:SensorsModuleViewModel"><ScrollViewer><StackPanel Margin="42,34,42,42" Spacing="24"><Grid ColumnDefinitions="*,Auto"><StackPanel Spacing="6"><TextBlock Text="Sensors" FontSize="31" FontWeight="SemiBold"/><TextBlock Text="Hardware telemetry exposed by the local system." Classes="muted" FontSize="14"/></StackPanel><TextBlock Grid.Column="1" Text="{Binding Items.Count, StringFormat={}{0} READINGS}" Classes="eyebrow" VerticalAlignment="Center"/></Grid><Border Classes="card"><StackPanel Spacing="7"><TextBlock Text="SENSOR ACCESS" Classes="eyebrow"/><TextBlock Text="CPU temperature is read from the ExteraMonitorDriver kernel driver. Libre Hardware Monitor remains an optional fallback source. Missing readings are omitted rather than estimated." Classes="muted" TextWrapping="Wrap"/></StackPanel></Border><Border Classes="panel"><Grid RowDefinitions="Auto,*"><Grid ColumnDefinitions="1.2*,1.2*,*,Auto" Margin="0,0,0,12"><TextBlock Text="HARDWARE" Classes="eyebrow"/><TextBlock Grid.Column="1" Text="SENSOR" Classes="eyebrow"/><TextBlock Grid.Column="2" Text="TYPE" Classes="eyebrow"/><TextBlock Grid.Column="3" Text="VALUE" Classes="eyebrow"/></Grid><ItemsControl Grid.Row="1" ItemsSource="{Binding Items}"><ItemsControl.ItemTemplate><DataTemplate><Border BorderBrush="#A5C9CA" BorderThickness="0,1,0,0" Padding="0,12"><Grid ColumnDefinitions="1.2*,1.2*,*,Auto"><TextBlock Text="{Binding HardwareName}"/><TextBlock Grid.Column="1" Text="{Binding Name}" Classes="muted"/><TextBlock Grid.Column="2" Text="{Binding Type}"/><TextBlock Grid.Column="3" Text="{Binding Value, StringFormat={}{0:0.##}}" FontWeight="SemiBold"/><TextBlock Grid.Column="3" Text="{Binding Unit}" Margin="54,0,0,0" VerticalAlignment="Center" Classes="muted"/></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></Grid></Border></StackPanel></ScrollViewer></UserControl>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ExteraMonitor.ViewModels.Modules"
+             x:Class="ExteraMonitor.Views.Modules.SensorsModuleView"
+             x:CompileBindings="False">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="24,22,24,28" Spacing="16">
+      <StackPanel Spacing="4">
+        <TextBlock Text="Sensors" FontSize="30" FontWeight="SemiBold"/>
+        <TextBlock Text="Explore hardware readings currently exposed by the local sensor sources." Classes="muted" FontSize="13" TextWrapping="Wrap"/>
+      </StackPanel>
+
+      <WrapPanel Orientation="Horizontal">
+        <Border Classes="telemetry-card" Width="205" MinHeight="120" Padding="15" Margin="0,0,10,10"><StackPanel Spacing="5"><TextBlock Text="EXPOSED READINGS" Classes="eyebrow" FontSize="9"/><TextBlock Text="{Binding TotalCount}" FontSize="27" FontWeight="SemiBold"/><TextBlock Text="All reported sensor rows" Classes="muted" FontSize="10"/></StackPanel></Border>
+        <Border Classes="telemetry-card" Width="205" MinHeight="120" Padding="15" Margin="0,0,10,10"><StackPanel Spacing="5"><TextBlock Text="HARDWARE GROUPS" Classes="eyebrow" FontSize="9"/><TextBlock Text="{Binding HardwareCount}" FontSize="27" FontWeight="SemiBold"/><TextBlock Text="Distinct source devices" Classes="muted" FontSize="10"/></StackPanel></Border>
+        <Border Classes="telemetry-card" Width="205" MinHeight="120" Padding="15" Margin="0,0,10,10"><StackPanel Spacing="5"><TextBlock Text="TEMPERATURE CHANNELS" Classes="eyebrow" FontSize="9"/><TextBlock Text="{Binding TemperatureCount}" FontSize="27" FontWeight="SemiBold"/><TextBlock Text="Only sensors provided by sources" Classes="muted" FontSize="10" TextWrapping="Wrap"/></StackPanel></Border>
+      </WrapPanel>
+
+      <Border Classes="panel">
+        <StackPanel Spacing="11">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <StackPanel Spacing="3"><TextBlock Text="LIVE SENSOR INVENTORY" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="{Binding Summary}" Classes="muted" FontSize="11"/></StackPanel>
+            <ComboBox Grid.Column="1" Width="142" ItemsSource="{Binding TypeFilters}" SelectedItem="{Binding SelectedType}"/>
+          </Grid>
+          <TextBox Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="Search hardware, sensor or type…"/>
+          <Border Background="{DynamicResource ThemeSoftBrush}" CornerRadius="8" Padding="8,7">
+            <Grid ColumnDefinitions="1.1*,1.4*,Auto,Auto" ColumnSpacing="12">
+              <TextBlock Text="HARDWARE" Classes="eyebrow" FontSize="9"/>
+              <TextBlock Grid.Column="1" Text="SENSOR" Classes="eyebrow" FontSize="9"/>
+              <TextBlock Grid.Column="2" Text="TYPE" Classes="eyebrow" FontSize="9"/>
+              <TextBlock Grid.Column="3" Text="VALUE" Classes="eyebrow" FontSize="9" HorizontalAlignment="Right"/>
+            </Grid>
+          </Border>
+          <ItemsControl ItemsSource="{Binding Items}" IsVisible="{Binding HasResults}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="0,0,0,1" Padding="8,10">
+                  <Grid ColumnDefinitions="1.1*,1.4*,Auto,Auto" ColumnSpacing="12">
+                    <TextBlock Text="{Binding HardwareName}" FontSize="10" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                    <Border Grid.Column="2" Background="{DynamicResource ThemeSoftBrush}" CornerRadius="7" Padding="6,3" VerticalAlignment="Center"><TextBlock Text="{Binding Type}" FontSize="9"/></Border>
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right" VerticalAlignment="Center"><TextBlock Text="{Binding Value, StringFormat={}{0:0.###}}" FontSize="11" FontWeight="SemiBold"/><TextBlock Text="{Binding Unit}" Classes="muted" FontSize="10"/></StackPanel>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Border IsVisible="{Binding HasNoResults}" Background="{DynamicResource ThemeSoftBrush}" CornerRadius="10" Padding="16">
+            <StackPanel Spacing="5"><TextBlock Text="NO SENSOR MATCHES" Classes="eyebrow"/><TextBlock Text="Clear the search or choose another type. A missing channel is not estimated or replaced with a synthetic value." Classes="muted" FontSize="12" TextWrapping="Wrap"/></StackPanel>
+          </Border>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

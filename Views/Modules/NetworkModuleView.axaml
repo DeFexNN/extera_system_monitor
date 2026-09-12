@@ -1,1 +1,48 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:ExteraMonitor.ViewModels.Modules" x:Class="ExteraMonitor.Views.Modules.NetworkModuleView" x:DataType="vm:NetworkModuleViewModel"><ScrollViewer><StackPanel Margin="42,34,42,42" Spacing="24"><StackPanel Spacing="6"><TextBlock Text="Network" FontSize="31" FontWeight="SemiBold"/><TextBlock Text="Current throughput and local link status." Classes="muted" FontSize="14"/></StackPanel><Grid ColumnDefinitions="*,*" ColumnSpacing="18"><Border Classes="panel"><StackPanel Spacing="18"><TextBlock Text="DOWNLOAD" Classes="eyebrow"/><TextBlock Text="{Binding Download, StringFormat={}{0:0.0} Mbps}" FontSize="42" FontWeight="SemiBold"/><TextBlock Text="Inbound traffic / active link" Classes="muted"/><ProgressBar Value="{Binding Download}" Maximum="120" Height="12"/></StackPanel></Border><Border Classes="panel" Grid.Column="1"><StackPanel Spacing="18"><TextBlock Text="UPLOAD" Classes="eyebrow"/><TextBlock Text="{Binding Upload, StringFormat={}{0:0.0} Mbps}" FontSize="42" FontWeight="SemiBold"/><TextBlock Text="Outbound traffic / active link" Classes="muted"/><ProgressBar Value="{Binding Upload}" Maximum="120" Height="12"/></StackPanel></Border></Grid><Grid ColumnDefinitions="1.25*,*" ColumnSpacing="18"><Border Classes="panel"><StackPanel Spacing="16"><TextBlock Text="LINK ACTIVITY" FontSize="19" FontWeight="SemiBold"/><Grid Height="190"><Path Fill="#A5C9CA" Stretch="Fill" Data="M 0,140 C 60,130 80,50 130,100 S 210,150 260,65 S 340,125 400,44 S 480,110 540,40 S 620,130 700,28"/><Polyline Points="0,140 60,130 130,100 210,150 260,65 340,125 400,44 480,110 540,40 620,130 700,28" Stroke="#395B64" StrokeThickness="3" Stretch="Fill"/></Grid><TextBlock Text="Traffic sampled at two-second intervals." Classes="muted" FontSize="12"/></StackPanel></Border><Border Classes="card" Grid.Column="1"><StackPanel Spacing="18"><TextBlock Text="CONNECTION" Classes="eyebrow"/><TextBlock Text="CONNECTED" FontSize="25" FontWeight="SemiBold" Foreground="#395B64"/><TextBlock Text="Ethernet • 1 Gbps"/><TextBlock Text="Latency 14 ms\nPacket loss 0%" Classes="muted" LineHeight="22"/></StackPanel></Border></Grid></StackPanel></ScrollViewer></UserControl>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ExteraMonitor.ViewModels.Modules"
+             xmlns:controls="using:ExteraMonitor.Views.Controls"
+             x:Class="ExteraMonitor.Views.Modules.NetworkModuleView"
+             x:CompileBindings="False">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="24,22,24,28" Spacing="16">
+      <StackPanel Spacing="4">
+        <TextBlock Text="Network" FontSize="30" FontWeight="SemiBold"/>
+        <TextBlock Text="Live throughput from Windows interface byte counters." Classes="muted" FontSize="13" TextWrapping="Wrap"/>
+      </StackPanel>
+
+      <WrapPanel Orientation="Horizontal">
+        <Border Classes="telemetry-card" Width="240" MinHeight="154" Padding="17" Margin="0,0,12,12">
+          <StackPanel Spacing="8"><TextBlock Text="DOWNLOAD" Classes="eyebrow"/><TextBlock Text="{Binding Download, StringFormat={}{0:0.00} Mbps}" FontSize="31" FontWeight="SemiBold"/><ProgressBar Value="{Binding Download}" Maximum="{Binding ScaleMaximum}" Height="10"/><Grid ColumnDefinitions="*,Auto"><TextBlock Text="History peak" Classes="muted" FontSize="10"/><TextBlock Grid.Column="1" Text="{Binding PeakDownload, StringFormat={}{0:0.00} Mbps}" Classes="muted" FontSize="10"/></Grid></StackPanel>
+        </Border>
+        <Border Classes="telemetry-card" Width="240" MinHeight="154" Padding="17" Margin="0,0,12,12">
+          <StackPanel Spacing="8"><TextBlock Text="UPLOAD" Classes="eyebrow"/><TextBlock Text="{Binding Upload, StringFormat={}{0:0.00} Mbps}" FontSize="31" FontWeight="SemiBold"/><ProgressBar Value="{Binding Upload}" Maximum="{Binding ScaleMaximum}" Height="10"/><Grid ColumnDefinitions="*,Auto"><TextBlock Text="History peak" Classes="muted" FontSize="10"/><TextBlock Grid.Column="1" Text="{Binding PeakUpload, StringFormat={}{0:0.00} Mbps}" Classes="muted" FontSize="10"/></Grid></StackPanel>
+        </Border>
+        <Border Classes="panel" Width="220" MinHeight="154" Margin="0,0,12,12">
+          <StackPanel Spacing="8" VerticalAlignment="Center"><TextBlock Text="COMBINED RATE" Classes="eyebrow"/><TextBlock Text="{Binding CombinedThroughput, StringFormat={}{0:0.00} Mbps}" FontSize="25" FontWeight="SemiBold"/><TextBlock Text="Download + upload at the latest sample" Classes="muted" FontSize="11" TextWrapping="Wrap"/></StackPanel>
+        </Border>
+      </WrapPanel>
+
+      <Border Classes="panel">
+        <StackPanel Spacing="11">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <StackPanel Spacing="3"><TextBlock Text="THROUGHPUT HISTORY" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="{Binding SamplingNote}" Classes="muted" FontSize="11"/></StackPanel>
+            <TextBlock Grid.Column="1" Text="{Binding SampleCount, StringFormat={}{0} SAMPLES}" Classes="eyebrow" VerticalAlignment="Center"/>
+          </Grid>
+          <Grid Height="240" ClipToBounds="True">
+            <controls:TelemetryGraph Values="{Binding DownloadHistory}" Stroke="{DynamicResource ThemeAccentBrush}" Minimum="0" Maximum="{Binding ScaleMaximum}"/>
+            <controls:TelemetryGraph Values="{Binding UploadHistory}" Stroke="#D86B24" Minimum="0" Maximum="{Binding ScaleMaximum}" ShowGrid="False"/>
+          </Grid>
+          <StackPanel Orientation="Horizontal" Spacing="14">
+            <StackPanel Orientation="Horizontal" Spacing="6"><Border Width="9" Height="9" CornerRadius="5" Background="{DynamicResource ThemeAccentBrush}"/><TextBlock Text="DOWNLOAD" Classes="muted" FontSize="10"/></StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6"><Border Width="9" Height="9" CornerRadius="5" Background="#D86B24"/><TextBlock Text="UPLOAD" Classes="muted" FontSize="10"/></StackPanel>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="telemetry-card" Padding="15">
+        <StackPanel Spacing="6"><TextBlock Text="COUNTER SCOPE" Classes="eyebrow"/><TextBlock Text="Rates are aggregated across operational network interfaces. Loopback and tunnel interfaces are excluded by the sampler; adapter name, negotiated link speed, latency and packet loss are not collected here." Classes="muted" FontSize="12" TextWrapping="Wrap"/></StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

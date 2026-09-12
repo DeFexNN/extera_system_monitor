@@ -1,11 +1,131 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using Avalonia.Threading;
 using Avalonia.Media;
 using ExteraMonitor.Models;
 using ExteraMonitor.Services;
+using Microsoft.Win32;
 namespace ExteraMonitor.ViewModels.Modules;
 public abstract class MonitorModuleViewModel : ViewModelBase { public string ModuleName { get; } protected MonitorModuleViewModel(string name) => ModuleName = name; public abstract void Update(SystemSnapshot snapshot); }
-public sealed class OverviewModuleViewModel : MonitorModuleViewModel { private double _cpu, _memory, _storage, _network; public double Cpu { get => _cpu; private set => SetProperty(ref _cpu, value); } public double Memory { get => _memory; private set => SetProperty(ref _memory, value); } public double Storage { get => _storage; private set => SetProperty(ref _storage, value); } public double Network { get => _network; private set => SetProperty(ref _network, value); } public string Cores => $"{Environment.ProcessorCount} logical cores"; public string Uptime { get; private set; } = "—"; public OverviewModuleViewModel() : base("Overview") { } public override void Update(SystemSnapshot s) { Cpu = s.CpuUsage; Memory = s.MemoryUsage; Storage = s.StorageUsage; Network = s.DownloadMbps; Uptime = $"{(int)s.Uptime.TotalHours}h {s.Uptime.Minutes:00}m"; OnPropertyChanged(nameof(Uptime)); } }
+
+public sealed class ProcessSampleRowViewModel : ViewModelBase
+{
+    private double _cpu, _memory;
+    private string _status;
+    public string Name { get; }
+    public string User { get; }
+    public double Cpu { get => _cpu; private set => SetProperty(ref _cpu, value); }
+    public double Memory { get => _memory; private set => SetProperty(ref _memory, value); }
+    public string Status { get => _status; private set => SetProperty(ref _status, value); }
+    public string Key => $"{Name}\u001f{User}";
+    public ProcessSampleRowViewModel(ProcessInfo process) { Name = process.Name; User = process.User; _status = process.Status; Update(process); }
+    public void Update(ProcessInfo process) { Cpu = process.Cpu; Memory = process.Memory; Status = process.Status; }
+    public static IReadOnlyList<ProcessSampleRowViewModel> Reconcile(IEnumerable<ProcessInfo> source, IEnumerable<ProcessSampleRowViewModel> existing)
+    {
+        var queues = existing.GroupBy(row => row.Key, StringComparer.OrdinalIgnoreCase).ToDictionary(group => group.Key, group => new Queue<ProcessSampleRowViewModel>(group), StringComparer.OrdinalIgnoreCase);
+        var result = new List<ProcessSampleRowViewModel>();
+        foreach (var process in source)
+        {
+            var key = $"{process.Name}\u001f{process.User}";
+            if (queues.TryGetValue(key, out var queue) && queue.Count > 0) { var row = queue.Dequeue(); row.Update(process); result.Add(row); }
+            else result.Add(new ProcessSampleRowViewModel(process));
+        }
+        return result;
+    }
+}
+
+public static class ObservableCollectionReconciler
+{
+    public static void SetItems<T>(ObservableCollection<T> target, IReadOnlyList<T> desired) where T : class
+    {
+        for (var index = target.Count - 1; index >= 0; index--)
+            if (!desired.Any(item => ReferenceEquals(item, target[index]))) target.RemoveAt(index);
+        for (var index = 0; index < desired.Count; index++)
+        {
+            if (index < target.Count && ReferenceEquals(target[index], desired[index])) continue;
+            var existingIndex = target.IndexOf(desired[index]);
+            if (existingIndex >= 0) target.Move(existingIndex, index);
+            else target.Insert(index, desired[index]);
+        }
+    }
+}
+
+public sealed class StorageVolumeViewModel : ViewModelBase
+{
+    private string _volumeLabel;
+    private double _used, _total, _usage;
+    public string Name { get; }
+    public string VolumeLabel { get => _volumeLabel; private set => SetProperty(ref _volumeLabel, value); }
+    public double UsedGigabytes { get => _used; private set => SetProperty(ref _used, value); }
+    public double TotalGigabytes { get => _total; private set => SetProperty(ref _total, value); }
+    public double UsagePercent { get => _usage; private set => SetProperty(ref _usage, value); }
+    public StorageVolumeViewModel(DiskMetric disk) { Name = disk.Name; _volumeLabel = disk.VolumeLabel; Update(disk); }
+    public void Update(DiskMetric disk) { VolumeLabel = disk.VolumeLabel; UsedGigabytes = disk.UsedGigabytes; TotalGigabytes = disk.TotalGigabytes; UsagePercent = disk.UsagePercent; }
+}
+
+public sealed class SensorReadingViewModel : ViewModelBase
+{
+    private string _hardwareName, _name, _type, _unit;
+    private double _value;
+    public string HardwareName { get => _hardwareName; private set => SetProperty(ref _hardwareName, value); }
+    public string Name { get => _name; private set => SetProperty(ref _name, value); }
+    public string Type { get => _type; private set => SetProperty(ref _type, value); }
+    public double Value { get => _value; private set => SetProperty(ref _value, value); }
+    public string Unit { get => _unit; private set => SetProperty(ref _unit, value); }
+    public string Key => $"{HardwareName}\u001f{Type}\u001f{Name}";
+    public SensorReadingViewModel(HardwareSensorMetric sensor) { _hardwareName = sensor.HardwareName; _name = sensor.Name; _type = sensor.Type; _unit = sensor.Unit; _value = sensor.Value; }
+    public void Update(HardwareSensorMetric sensor) { HardwareName = sensor.HardwareName; Name = sensor.Name; Type = sensor.Type; Value = sensor.Value; Unit = sensor.Unit; }
+}
+public sealed class OverviewModuleViewModel : MonitorModuleViewModel
+{
+    private const int HistoryLimit = 30;
+    private readonly List<double> _cpuHistory = new(), _memoryHistory = new(), _storageHistory = [];
+    private double _cpu, _memory, _storage, _download, _upload, _memoryTotal, _storageTotal;
+    private int _threadCount, _sensorCount, _processCount;
+    private string _uptime = "—", _primaryVolume = "No ready volume";
+    public double Cpu { get => _cpu; private set => SetProperty(ref _cpu, value); }
+    public double Memory { get => _memory; private set => SetProperty(ref _memory, value); }
+    public double Storage { get => _storage; private set => SetProperty(ref _storage, value); }
+    public double Download { get => _download; private set => SetProperty(ref _download, value); }
+    public double Upload { get => _upload; private set => SetProperty(ref _upload, value); }
+    public double MemoryTotal { get => _memoryTotal; private set => SetProperty(ref _memoryTotal, value); }
+    public double StorageTotal { get => _storageTotal; private set => SetProperty(ref _storageTotal, value); }
+    public int ThreadCount { get => _threadCount; private set => SetProperty(ref _threadCount, value); }
+    public int SensorCount { get => _sensorCount; private set => SetProperty(ref _sensorCount, value); }
+    public int ProcessCount { get => _processCount; private set => SetProperty(ref _processCount, value); }
+    public string Uptime { get => _uptime; private set => SetProperty(ref _uptime, value); }
+    public string PrimaryVolume { get => _primaryVolume; private set => SetProperty(ref _primaryVolume, value); }
+    public string Cores => $"{ThreadCount} logical processors";
+    public string CpuTemperature { get; private set; } = "N/A";
+    public string MemoryLabel => MemoryTotal > 0 ? $"{Memory:0.0}%" : "N/A";
+    public bool HasMemoryData => MemoryTotal > 0;
+    public string MemoryCapacityLabel => MemoryTotal > 0 ? $"{MemoryTotal:0.0} GB" : "N/A";
+    public string MemoryUsed => MemoryTotal > 0 ? $"{MemoryTotal * Memory / 100:0.0} GB" : "N/A";
+    public string MemoryDetail => MemoryTotal > 0 ? $"{MemoryTotal * Memory / 100:0.0} GB of {MemoryTotal:0.0} GB RAM" : "Capacity unavailable";
+    public string StorageUsed => StorageTotal > 0 ? $"{StorageTotal * Storage / 100:0.0} GB" : "N/A";
+    public bool HasStorageData => StorageTotal > 0;
+    public string NetworkSummary => $"↓ {Download:0.0}  ·  ↑ {Upload:0.0} Mbps";
+    public IReadOnlyList<double> CpuHistory => _cpuHistory.ToArray();
+    public IReadOnlyList<double> MemoryHistory => _memoryHistory.ToArray();
+    public IReadOnlyList<double> StorageHistory => _storageHistory.ToArray();
+    public OverviewModuleViewModel() : base("Overview") { }
+
+    public override void Update(SystemSnapshot snapshot)
+    {
+        Cpu = snapshot.CpuUsage; Memory = snapshot.MemoryUsage; Storage = snapshot.StorageUsage;
+        Download = snapshot.DownloadMbps; Upload = snapshot.UploadMbps; MemoryTotal = snapshot.MemoryTotal; StorageTotal = snapshot.StorageTotal;
+        ThreadCount = snapshot.CpuInfo?.ThreadCount ?? (snapshot.Cores.Count > 0 ? snapshot.Cores.Count : Environment.ProcessorCount);
+        SensorCount = snapshot.Sensors.Count; ProcessCount = snapshot.ProcessCount;
+        Uptime = $"{(int)snapshot.Uptime.TotalHours}h {snapshot.Uptime.Minutes:00}m";
+        var disk = snapshot.Disks.FirstOrDefault(); PrimaryVolume = disk is null ? "No ready volume" : $"{disk.Name} · {disk.VolumeLabel}";
+        CpuTemperature = snapshot.CpuTemperature > 0 ? $"{snapshot.CpuTemperature:0.0} °C" : "N/A";
+        Append(_cpuHistory, Cpu); if (snapshot.MemoryTotal > 0) Append(_memoryHistory, Memory); if (snapshot.StorageTotal > 0) Append(_storageHistory, Storage);
+        OnPropertyChanged(nameof(Cores)); OnPropertyChanged(nameof(CpuTemperature)); OnPropertyChanged(nameof(MemoryLabel)); OnPropertyChanged(nameof(HasMemoryData)); OnPropertyChanged(nameof(MemoryCapacityLabel)); OnPropertyChanged(nameof(MemoryUsed)); OnPropertyChanged(nameof(MemoryDetail)); OnPropertyChanged(nameof(StorageUsed)); OnPropertyChanged(nameof(HasStorageData));
+        OnPropertyChanged(nameof(NetworkSummary)); OnPropertyChanged(nameof(CpuHistory)); OnPropertyChanged(nameof(MemoryHistory)); OnPropertyChanged(nameof(StorageHistory));
+    }
+
+    private static void Append(List<double> history, double value) { history.Add(value); while (history.Count > HistoryLimit) history.RemoveAt(0); }
+}
 public sealed class CpuModuleViewModel : MonitorModuleViewModel
 {
     private static readonly string[] WidgetKinds = ["Load", "Temperature", "Clock", "Cores", "History", "Power", "Voltage", "Temperatures", "PowerLimits", "Frequency", "CStates", "Information", "Processes", "PerCore", "Sensors"];
@@ -207,8 +327,7 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
         var cpuValues = CpuHistory.ToArray();
         var temperatureValues = TemperatureHistory.ToArray();
         foreach (var widget in Widgets) widget.Update(s, cpuValues, temperatureValues, Telemetry);
-        SensorPreview.Clear();
-        foreach (var sensor in Telemetry.AllSensors.Take(6)) SensorPreview.Add(sensor);
+        ObservableCollectionReconciler.SetItems(SensorPreview, Telemetry.AllSensors.Take(6).ToArray());
         OnPropertyChanged(nameof(HiddenSensorCount)); OnPropertyChanged(nameof(SensorsHeader)); OnPropertyChanged(nameof(SensorsToggleText));
         OnPropertyChanged(nameof(HistoryLoad)); OnPropertyChanged(nameof(HistoryTemperature)); OnPropertyChanged(nameof(HistoryClock)); OnPropertyChanged(nameof(HistoryPower));
         foreach (var item in WidgetLibrary) item.Refresh(Widgets.Any(widget => widget.Kind == item.Kind));
@@ -474,27 +593,313 @@ public sealed class CoreLoadSegmentViewModel
         Brush = isFilled ? accentBrush : trackBrush;
     }
 }
-public sealed class MemoryModuleViewModel : MonitorModuleViewModel { private double _usage, _totalGigabytes; public double Usage { get => _usage; private set => SetProperty(ref _usage, value); } public double TotalGigabytes { get => _totalGigabytes; private set => SetProperty(ref _totalGigabytes, value); } public string Used => $"{Usage * TotalGigabytes / 100:0.0} GB"; public string Available => $"{Math.Max(0, TotalGigabytes - Usage * TotalGigabytes / 100):0.0} GB"; public string Total => $"{TotalGigabytes:0.0} GB total"; public MemoryModuleViewModel() : base("Memory") { } public override void Update(SystemSnapshot s) { Usage = s.MemoryUsage; TotalGigabytes = s.MemoryTotal; OnPropertyChanged(nameof(Used)); OnPropertyChanged(nameof(Available)); OnPropertyChanged(nameof(Total)); } }
-public sealed class StorageModuleViewModel : MonitorModuleViewModel { private double _usage, _totalGigabytes; private string _primaryName = "No fixed disk"; public ObservableCollection<DiskMetric> Disks { get; } = new(); public double Usage { get => _usage; private set => SetProperty(ref _usage, value); } public double TotalGigabytes { get => _totalGigabytes; private set => SetProperty(ref _totalGigabytes, value); } public string PrimaryName { get => _primaryName; private set => SetProperty(ref _primaryName, value); } public string Used => $"{Usage * TotalGigabytes / 100:0.0} GB"; public string Total => $"{TotalGigabytes:0.0} GB total"; public StorageModuleViewModel() : base("Storage") { } public override void Update(SystemSnapshot s) { Usage = s.StorageUsage; TotalGigabytes = s.StorageTotal; var primary = s.Disks.FirstOrDefault(); PrimaryName = primary is null ? "No fixed disk" : $"Primary volume / {primary.Name}"; Disks.Clear(); foreach (var disk in s.Disks) Disks.Add(disk); OnPropertyChanged(nameof(Used)); OnPropertyChanged(nameof(Total)); } }
-public sealed class NetworkModuleViewModel : MonitorModuleViewModel { private double _download, _upload; public double Download { get => _download; private set => SetProperty(ref _download, value); } public double Upload { get => _upload; private set => SetProperty(ref _upload, value); } public NetworkModuleViewModel() : base("Network") { } public override void Update(SystemSnapshot s) { Download = s.DownloadMbps; Upload = s.UploadMbps; } }
-public sealed class ProcessModuleViewModel : MonitorModuleViewModel { public ObservableCollection<ProcessInfo> Items { get; } = new(); public int Count { get; private set; } public ProcessModuleViewModel() : base("Processes") { } public override void Update(SystemSnapshot s) { Items.Clear(); foreach (var item in s.Processes) Items.Add(item); Count = s.ProcessCount; OnPropertyChanged(nameof(Count)); } }
+public sealed class MemoryModuleViewModel : MonitorModuleViewModel
+{
+    private const int HistoryLimit = 30;
+    private readonly List<double> _history = new();
+    private double _usage, _totalGigabytes;
+    public ObservableCollection<ProcessSampleRowViewModel> TopConsumers { get; } = new();
+    public bool HasConsumers => TopConsumers.Count > 0;
+    public bool HasNoConsumers => !HasConsumers;
+    public double Usage { get => _usage; private set => SetProperty(ref _usage, value); }
+    public double TotalGigabytes { get => _totalGigabytes; private set => SetProperty(ref _totalGigabytes, value); }
+    public bool HasData => TotalGigabytes > 0;
+    public string Used => HasData ? $"{TotalGigabytes * Usage / 100:0.0} GB" : "N/A";
+    public string Available => HasData ? $"{Math.Max(0, TotalGigabytes - TotalGigabytes * Usage / 100):0.0} GB" : "N/A";
+    public string Total => HasData ? $"{TotalGigabytes:0.0} GB" : "N/A";
+    public string UtilizationLabel => HasData ? $"{Usage:0.0}%" : "N/A";
+    public string UsageBand => !HasData ? "WAITING FOR MEMORY SAMPLE" : Usage >= 90 ? "VERY HIGH UTILIZATION" : Usage >= 75 ? "HIGH UTILIZATION" : Usage >= 40 ? "MODERATE UTILIZATION" : "LOW UTILIZATION";
+    public IReadOnlyList<double> History => _history.ToArray();
+    public MemoryModuleViewModel() : base("Memory") { }
+
+    public override void Update(SystemSnapshot snapshot)
+    {
+        Usage = snapshot.MemoryUsage; TotalGigabytes = snapshot.MemoryTotal;
+        if (HasData) { _history.Add(Usage); while (_history.Count > HistoryLimit) _history.RemoveAt(0); }
+        var consumers = ProcessSampleRowViewModel.Reconcile(snapshot.Processes.OrderByDescending(item => item.Memory).Take(5), TopConsumers);
+        ObservableCollectionReconciler.SetItems(TopConsumers, consumers);
+        OnPropertyChanged(nameof(HasData)); OnPropertyChanged(nameof(HasConsumers)); OnPropertyChanged(nameof(HasNoConsumers)); OnPropertyChanged(nameof(Used)); OnPropertyChanged(nameof(Available)); OnPropertyChanged(nameof(Total));
+        OnPropertyChanged(nameof(UtilizationLabel)); OnPropertyChanged(nameof(UsageBand)); OnPropertyChanged(nameof(History));
+    }
+}
+
+public sealed class StorageModuleViewModel : MonitorModuleViewModel
+{
+    private double _usage, _totalGigabytes;
+    private string _primaryName = "No ready volume";
+    public ObservableCollection<StorageVolumeViewModel> Disks { get; } = new();
+    public double Usage { get => _usage; private set => SetProperty(ref _usage, value); }
+    public double TotalGigabytes { get => _totalGigabytes; private set => SetProperty(ref _totalGigabytes, value); }
+    public string PrimaryName { get => _primaryName; private set => SetProperty(ref _primaryName, value); }
+    public bool HasData => TotalGigabytes > 0;
+    public int DiskCount => Disks.Count;
+    public bool HasDisks => DiskCount > 0;
+    public bool HasNoDisks => DiskCount == 0;
+    public double TotalCapacityGigabytes => Disks.Sum(disk => disk.TotalGigabytes);
+    public double TotalUsedGigabytes => Disks.Sum(disk => disk.UsedGigabytes);
+    public string Used => HasData ? $"{TotalGigabytes * Usage / 100:0.0} GB" : "N/A";
+    public string Total => HasData ? $"{TotalGigabytes:0.0} GB total" : "N/A";
+    public string CapacitySummary => DiskCount == 0 ? "No ready local volumes" : $"{DiskCount} ready local volume{(DiskCount == 1 ? "" : "s")} · sampled by Windows";
+    public string AllVolumesSummary => DiskCount == 0 ? "N/A" : $"{TotalUsedGigabytes:0.0} / {TotalCapacityGigabytes:0.0} GB";
+
+    public StorageModuleViewModel() : base("Storage") { }
+
+    public override void Update(SystemSnapshot snapshot)
+    {
+        var primary = snapshot.Disks.FirstOrDefault();
+        Usage = primary?.UsagePercent ?? 0; TotalGigabytes = primary?.TotalGigabytes ?? 0;
+        PrimaryName = primary is null ? "No ready volume" : $"{primary.Name} · {primary.VolumeLabel}";
+        var currentVolumes = Disks.ToDictionary(disk => disk.Name, StringComparer.OrdinalIgnoreCase);
+        var volumes = new List<StorageVolumeViewModel>();
+        foreach (var disk in snapshot.Disks)
+        {
+            if (currentVolumes.TryGetValue(disk.Name, out var volume)) volume.Update(disk);
+            else volume = new StorageVolumeViewModel(disk);
+            volumes.Add(volume);
+        }
+        ObservableCollectionReconciler.SetItems(Disks, volumes);
+        OnPropertyChanged(nameof(HasData)); OnPropertyChanged(nameof(DiskCount)); OnPropertyChanged(nameof(HasDisks)); OnPropertyChanged(nameof(HasNoDisks)); OnPropertyChanged(nameof(TotalCapacityGigabytes));
+        OnPropertyChanged(nameof(TotalUsedGigabytes)); OnPropertyChanged(nameof(Used)); OnPropertyChanged(nameof(Total));
+        OnPropertyChanged(nameof(CapacitySummary)); OnPropertyChanged(nameof(AllVolumesSummary));
+    }
+}
+public sealed class NetworkModuleViewModel : MonitorModuleViewModel
+{
+    private const int HistoryLimit = 60;
+    private readonly List<double> _downloadHistory = new(), _uploadHistory = new();
+    private double _download, _upload;
+    public double Download { get => _download; private set => SetProperty(ref _download, value); }
+    public double Upload { get => _upload; private set => SetProperty(ref _upload, value); }
+    public IReadOnlyList<double> DownloadHistory => _downloadHistory.ToArray();
+    public IReadOnlyList<double> UploadHistory => _uploadHistory.ToArray();
+    public double ScaleMaximum => Math.Max(10, Math.Ceiling(Math.Max(_downloadHistory.DefaultIfEmpty().Max(), _uploadHistory.DefaultIfEmpty().Max()) / 10d) * 10d);
+    public double PeakDownload => _downloadHistory.DefaultIfEmpty().Max();
+    public double PeakUpload => _uploadHistory.DefaultIfEmpty().Max();
+    public double CombinedThroughput => Download + Upload;
+    public int SampleCount => _downloadHistory.Count;
+    public bool HasSamples => SampleCount > 1;
+    public string AggregateLabel => $"↓ {Download:0.00} Mbps   ↑ {Upload:0.00} Mbps";
+    public string SamplingNote => "Aggregate Windows interface counters · 60 latest samples";
+    public NetworkModuleViewModel() : base("Network") { }
+    public override void Update(SystemSnapshot snapshot)
+    {
+        Download = snapshot.DownloadMbps; Upload = snapshot.UploadMbps;
+        Append(_downloadHistory, Download); Append(_uploadHistory, Upload);
+        OnPropertyChanged(nameof(DownloadHistory)); OnPropertyChanged(nameof(UploadHistory)); OnPropertyChanged(nameof(ScaleMaximum));
+        OnPropertyChanged(nameof(PeakDownload)); OnPropertyChanged(nameof(PeakUpload)); OnPropertyChanged(nameof(AggregateLabel));
+        OnPropertyChanged(nameof(CombinedThroughput)); OnPropertyChanged(nameof(SampleCount)); OnPropertyChanged(nameof(HasSamples));
+    }
+    private static void Append(List<double> values, double value) { if (!double.IsFinite(value) || value < 0) return; values.Add(value); while (values.Count > HistoryLimit) values.RemoveAt(0); }
+}
+
+public sealed class ProcessModuleViewModel : MonitorModuleViewModel
+{
+    private IReadOnlyList<ProcessSampleRowViewModel> _sampled = Array.Empty<ProcessSampleRowViewModel>();
+    private string _searchText = "", _sortMode = "CPU";
+    public ObservableCollection<ProcessSampleRowViewModel> Items { get; } = new();
+    public ObservableCollection<string> SortModes { get; } = new() { "CPU", "Memory", "Name" };
+    public int Count { get; private set; }
+    public int VisibleCount => Items.Count;
+    public bool HasItems => Items.Count > 0;
+    public bool HasNoItems => Items.Count == 0;
+    public string SearchText { get => _searchText; set { if (SetProperty(ref _searchText, value)) RefreshRows(); } }
+    public string SortMode { get => _sortMode; set { if (SetProperty(ref _sortMode, value)) RefreshRows(); } }
+    public string CountSummary => $"Showing {VisibleCount} sampled rows · {Count} total processes";
+    public string CpuSummary => Items.Count == 0 ? "N/A" : $"{Items.Sum(item => item.Cpu):0.0}% CPU across shown rows";
+    public string MemorySummary => Items.Count == 0 ? "N/A" : $"{Items.Sum(item => item.Memory):0} MB across shown rows";
+    public ProcessModuleViewModel() : base("Processes") { }
+    public override void Update(SystemSnapshot snapshot)
+    {
+        _sampled = ProcessSampleRowViewModel.Reconcile(snapshot.Processes, _sampled); Count = snapshot.ProcessCount;
+        OnPropertyChanged(nameof(Count)); RefreshRows();
+    }
+    private void RefreshRows()
+    {
+        var filtered = _sampled.Where(item => string.IsNullOrWhiteSpace(SearchText) || item.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase) || item.User.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+        filtered = SortMode switch { "Memory" => filtered.OrderByDescending(item => item.Memory), "Name" => filtered.OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase), _ => filtered.OrderByDescending(item => item.Cpu) };
+        ObservableCollectionReconciler.SetItems(Items, filtered.ToArray());
+        OnPropertyChanged(nameof(VisibleCount)); OnPropertyChanged(nameof(HasItems)); OnPropertyChanged(nameof(HasNoItems)); OnPropertyChanged(nameof(CountSummary)); OnPropertyChanged(nameof(CpuSummary)); OnPropertyChanged(nameof(MemorySummary));
+    }
+}
 public sealed class OverlayModuleViewModel : MonitorModuleViewModel
 {
-    private bool _isEnabled = true, _alwaysOnTop = true, _showCpu = true, _showMemory = true, _showNetwork = true; private double _cpu, _memory, _download;
-    public bool IsEnabled { get => _isEnabled; set => SetProperty(ref _isEnabled, value); } public bool AlwaysOnTop { get => _alwaysOnTop; set => SetProperty(ref _alwaysOnTop, value); } public bool ShowCpu { get => _showCpu; set => SetProperty(ref _showCpu, value); } public bool ShowMemory { get => _showMemory; set => SetProperty(ref _showMemory, value); } public bool ShowNetwork { get => _showNetwork; set => SetProperty(ref _showNetwork, value); }
-    public double Cpu { get => _cpu; private set => SetProperty(ref _cpu, value); } public double Memory { get => _memory; private set => SetProperty(ref _memory, value); } public double Download { get => _download; private set => SetProperty(ref _download, value); }
-    public OverlayModuleViewModel() : base("Overlay") { } public override void Update(SystemSnapshot s) { Cpu = s.CpuUsage; Memory = s.MemoryUsage; Download = s.DownloadMbps; }
+    private bool _isEnabled, _alwaysOnTop = true, _showCpu = true, _showMemory = true, _showNetwork = true;
+    private double _cpu, _memory, _memoryTotal, _download, _upload;
+    private Action<bool>? _visibilityChanged, _topmostChanged;
+    public bool IsEnabled { get => _isEnabled; set { if (SetProperty(ref _isEnabled, value)) { OnPropertyChanged(nameof(StatusLabel)); OnPropertyChanged(nameof(PreviewOpacity)); _visibilityChanged?.Invoke(value); } } }
+    public bool AlwaysOnTop { get => _alwaysOnTop; set { if (SetProperty(ref _alwaysOnTop, value)) _topmostChanged?.Invoke(value); } }
+    public bool ShowCpu { get => _showCpu; set { if (SetProperty(ref _showCpu, value)) NotifyVisibleMetricsChanged(); } }
+    public bool ShowMemory { get => _showMemory; set { if (SetProperty(ref _showMemory, value)) NotifyVisibleMetricsChanged(); } }
+    public bool ShowNetwork { get => _showNetwork; set { if (SetProperty(ref _showNetwork, value)) NotifyVisibleMetricsChanged(); } }
+    public double Cpu { get => _cpu; private set => SetProperty(ref _cpu, value); }
+    public double Memory { get => _memory; private set => SetProperty(ref _memory, value); }
+    public bool HasMemoryData => _memoryTotal > 0;
+    public string MemoryLabel => HasMemoryData ? $"{Memory:0.0}%" : "N/A";
+    public double Download { get => _download; private set => SetProperty(ref _download, value); }
+    public double Upload { get => _upload; private set => SetProperty(ref _upload, value); }
+    public string StatusLabel => IsEnabled ? "OVERLAY ON" : "PREVIEW ONLY";
+    public double PreviewOpacity => IsEnabled ? 1 : 0.72;
+    public string NetworkText => $"↓ {Download:0.0}  ↑ {Upload:0.0} Mbps";
+    public bool HasVisibleMetrics => ShowCpu || ShowMemory || ShowNetwork;
+    public bool HasNoVisibleMetrics => !HasVisibleMetrics;
+
+    public OverlayModuleViewModel() : base("Overlay") { }
+    public void AttachWindow(Action<bool> visibilityChanged, Action<bool> topmostChanged)
+    {
+        _visibilityChanged = visibilityChanged; _topmostChanged = topmostChanged;
+        _topmostChanged(AlwaysOnTop); _visibilityChanged(IsEnabled);
+    }
+    public override void Update(SystemSnapshot snapshot)
+    {
+        Cpu = snapshot.CpuUsage; Memory = snapshot.MemoryUsage; _memoryTotal = snapshot.MemoryTotal; Download = snapshot.DownloadMbps; Upload = snapshot.UploadMbps;
+        OnPropertyChanged(nameof(MemoryLabel)); OnPropertyChanged(nameof(HasMemoryData)); OnPropertyChanged(nameof(NetworkText));
+    }
+
+    private void NotifyVisibleMetricsChanged() { OnPropertyChanged(nameof(HasVisibleMetrics)); OnPropertyChanged(nameof(HasNoVisibleMetrics)); }
 }
 public sealed class SoftwareModuleViewModel : MonitorModuleViewModel
 {
-    public ObservableCollection<SoftwareFeature> Features { get; } = new() { new("Software inventory", "Installed application and version discovery.", "Planned"), new("Update advisor", "Surface available updates for chosen tools.", "Planned"), new("Service inspector", "Review local service health and startup behavior.", "Planned") };
-    public SoftwareModuleViewModel() : base("Software") { } public override void Update(SystemSnapshot snapshot) { }
+    private IReadOnlyList<InstalledSoftwareItem> _allItems = Array.Empty<InstalledSoftwareItem>();
+    private string _searchText = "", _statusText = "Scanning installed application entries…";
+    private bool _isRefreshing;
+    public ObservableCollection<InstalledSoftwareItem> Items { get; } = new();
+    public string SearchText { get => _searchText; set { if (SetProperty(ref _searchText, value)) RefreshRows(); } }
+    public string StatusText { get => _statusText; private set => SetProperty(ref _statusText, value); }
+    public bool IsRefreshing { get => _isRefreshing; private set { if (SetProperty(ref _isRefreshing, value)) OnPropertyChanged(nameof(CanRefresh)); } }
+    public bool CanRefresh => !IsRefreshing;
+    public int InstalledCount => _allItems.Count;
+    public int VisibleCount => Items.Count;
+    public bool HasItems => Items.Count > 0;
+    public bool HasNoItems => Items.Count == 0;
+    public string EmptyStateText => string.IsNullOrWhiteSpace(SearchText) ? "No installed application entries were found in the registry inventory." : "No applications match this filter. Try a shorter search.";
+    public string InventorySummary => $"{InstalledCount} installed entries · {VisibleCount} shown";
+    public ICommand RefreshCommand { get; }
+    public SoftwareModuleViewModel() : base("Software")
+    {
+        RefreshCommand = new RelayCommand(_ => _ = RefreshInventoryAsync());
+        _ = RefreshInventoryAsync();
+    }
+    public override void Update(SystemSnapshot snapshot) { }
+
+    private async Task RefreshInventoryAsync()
+    {
+        if (IsRefreshing) return;
+        IsRefreshing = true; StatusText = "Reading installed-app registry entries…";
+        try
+        {
+            var items = await Task.Run(ReadInstalledSoftware);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                _allItems = items; RefreshRows();
+                StatusText = $"Read-only inventory · {items.Count} unique application entries";
+            });
+        }
+        catch (Exception exception)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() => StatusText = $"Inventory unavailable: {exception.GetType().Name}");
+        }
+        finally { await Dispatcher.UIThread.InvokeAsync(() => IsRefreshing = false); }
+    }
+
+    private void RefreshRows()
+    {
+        var rows = _allItems.Where(item => string.IsNullOrWhiteSpace(SearchText) || item.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase) || item.Publisher.Contains(SearchText, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase);
+        Items.Clear(); foreach (var item in rows) Items.Add(item);
+        OnPropertyChanged(nameof(InstalledCount)); OnPropertyChanged(nameof(VisibleCount)); OnPropertyChanged(nameof(HasItems)); OnPropertyChanged(nameof(HasNoItems)); OnPropertyChanged(nameof(EmptyStateText)); OnPropertyChanged(nameof(InventorySummary));
+    }
+
+    private static IReadOnlyList<InstalledSoftwareItem> ReadInstalledSoftware()
+    {
+        if (!OperatingSystem.IsWindows()) return Array.Empty<InstalledSoftwareItem>();
+        var items = new List<InstalledSoftwareItem>();
+        foreach (var view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
+        foreach (var hive in new[] { RegistryHive.LocalMachine, RegistryHive.CurrentUser })
+        {
+            try
+            {
+                using var rootKey = RegistryKey.OpenBaseKey(hive, view);
+                foreach (var path in new[] { @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall", @"SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall" })
+                {
+                    using var root = rootKey.OpenSubKey(path);
+                    if (root is null) continue;
+                    foreach (var childName in root.GetSubKeyNames())
+                    {
+                        try
+                        {
+                            using var app = root.OpenSubKey(childName);
+                            if (app is null || Convert.ToInt32(app.GetValue("SystemComponent", 0)) == 1) continue;
+                            var name = Convert.ToString(app.GetValue("DisplayName"))?.Trim();
+                            if (string.IsNullOrWhiteSpace(name)) continue;
+                            var publisher = Convert.ToString(app.GetValue("Publisher"))?.Trim() ?? "";
+                            var version = Convert.ToString(app.GetValue("DisplayVersion"))?.Trim() ?? "";
+                            var estimatedSize = double.TryParse(Convert.ToString(app.GetValue("EstimatedSize")), out var sizeKb) && sizeKb > 0 ? sizeKb / 1024d : (double?)null;
+                            items.Add(new InstalledSoftwareItem(name, publisher, version, estimatedSize));
+                        }
+                        catch { /* An unreadable per-user entry should not hide the rest of the inventory. */ }
+                    }
+                }
+            }
+            catch { /* Some registry views are unavailable on a given Windows installation. */ }
+        }
+        return items.GroupBy(item => $"{item.Name}|{item.Version}", StringComparer.OrdinalIgnoreCase).Select(group => group.First()).OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase).ToArray();
+    }
 }
+
+public sealed record InstalledSoftwareItem(string Name, string Publisher, string Version, double? EstimatedSizeMegabytes)
+{
+    public string PublisherLabel => string.IsNullOrWhiteSpace(Publisher) ? "Publisher not reported" : Publisher;
+    public string VersionLabel => string.IsNullOrWhiteSpace(Version) ? "Version not reported" : $"v{Version}";
+    public string SizeLabel => EstimatedSizeMegabytes is > 0 ? $"{EstimatedSizeMegabytes:0} MB" : "Size not reported";
+}
+
 public sealed class SensorsModuleViewModel : MonitorModuleViewModel
 {
-    public ObservableCollection<HardwareSensorMetric> Items { get; } = new();
+    public ObservableCollection<SensorReadingViewModel> Items { get; } = new();
+    public ObservableCollection<string> TypeFilters { get; } = new() { "All types" };
+    private readonly Dictionary<string, SensorReadingViewModel> _sensorRows = new(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyList<SensorReadingViewModel> _allItems = Array.Empty<SensorReadingViewModel>();
+    private string _searchText = "", _selectedType = "All types";
+    public string SearchText { get => _searchText; set { if (SetProperty(ref _searchText, value)) RefreshRows(); } }
+    public string SelectedType { get => _selectedType; set { if (SetProperty(ref _selectedType, value)) RefreshRows(); } }
+    public int TotalCount => _allItems.Count;
+    public int HardwareCount => _allItems.Select(sensor => sensor.HardwareName).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+    public int TemperatureCount => _allItems.Count(sensor => sensor.Type.Equals("Temperature", StringComparison.OrdinalIgnoreCase));
+    public string Summary => $"{TotalCount} exposed readings · {HardwareCount} hardware groups · {Items.Count} visible";
+    public bool HasResults => Items.Count > 0;
+    public bool HasNoResults => Items.Count == 0;
     public SensorsModuleViewModel() : base("Sensors") { }
-    public override void Update(SystemSnapshot snapshot) { Items.Clear(); foreach (var sensor in snapshot.Sensors.OrderBy(sensor => sensor.HardwareName).ThenBy(sensor => sensor.Type).ThenBy(sensor => sensor.Name)) Items.Add(sensor); }
+    public override void Update(SystemSnapshot snapshot)
+    {
+        var activeKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var rows = new List<SensorReadingViewModel>();
+        foreach (var sensor in snapshot.Sensors.OrderBy(sensor => sensor.HardwareName).ThenBy(sensor => sensor.Type).ThenBy(sensor => sensor.Name))
+        {
+            var key = $"{sensor.HardwareName}\u001f{sensor.Type}\u001f{sensor.Name}";
+            activeKeys.Add(key);
+            if (_sensorRows.TryGetValue(key, out var row)) row.Update(sensor);
+            else _sensorRows[key] = row = new SensorReadingViewModel(sensor);
+            rows.Add(row);
+        }
+        foreach (var staleKey in _sensorRows.Keys.Where(key => !activeKeys.Contains(key)).ToArray()) _sensorRows.Remove(staleKey);
+        _allItems = rows;
+        var types = _allItems.Select(sensor => sensor.Type).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray();
+        if (!TypeFilters.Skip(1).SequenceEqual(types, StringComparer.OrdinalIgnoreCase))
+        {
+            for (var index = TypeFilters.Count - 1; index > 0; index--) TypeFilters.RemoveAt(index);
+            foreach (var type in types) TypeFilters.Add(type);
+        }
+        if (!TypeFilters.Contains(SelectedType, StringComparer.OrdinalIgnoreCase)) { _selectedType = "All types"; OnPropertyChanged(nameof(SelectedType)); }
+        RefreshRows();
+    }
+    private void RefreshRows()
+    {
+        var filtered = _allItems.Where(sensor => (SelectedType == "All types" || sensor.Type.Equals(SelectedType, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrWhiteSpace(SearchText) || sensor.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase) || sensor.HardwareName.Contains(SearchText, StringComparison.OrdinalIgnoreCase) || sensor.Type.Contains(SearchText, StringComparison.OrdinalIgnoreCase)));
+        ObservableCollectionReconciler.SetItems(Items, filtered.ToArray());
+        OnPropertyChanged(nameof(TotalCount)); OnPropertyChanged(nameof(HardwareCount)); OnPropertyChanged(nameof(TemperatureCount));
+        OnPropertyChanged(nameof(Summary)); OnPropertyChanged(nameof(HasResults)); OnPropertyChanged(nameof(HasNoResults));
+    }
 }
 public sealed class DriverModuleViewModel : MonitorModuleViewModel
 {
