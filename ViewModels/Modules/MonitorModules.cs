@@ -81,7 +81,7 @@ public sealed class OverviewModuleViewModel : MonitorModuleViewModel
     private const int HistoryLimit = 30;
     private readonly List<double> _cpuHistory = new(), _memoryHistory = new(), _storageHistory = [];
     private double _cpu, _memory, _storage, _download, _upload, _memoryTotal, _storageTotal;
-    private int _threadCount, _sensorCount, _processCount;
+    private int _threadCount, _sensorCount, _processCount, _networkSamples;
     private string _uptime = "—", _primaryVolume = "No ready volume";
     public double Cpu { get => _cpu; private set => SetProperty(ref _cpu, value); }
     public double Memory { get => _memory; private set => SetProperty(ref _memory, value); }
@@ -104,7 +104,7 @@ public sealed class OverviewModuleViewModel : MonitorModuleViewModel
     public string MemoryDetail => MemoryTotal > 0 ? $"{MemoryTotal * Memory / 100:0.0} GB of {MemoryTotal:0.0} GB RAM" : "Capacity unavailable";
     public string StorageUsed => StorageTotal > 0 ? $"{StorageTotal * Storage / 100:0.0} GB" : "N/A";
     public bool HasStorageData => StorageTotal > 0;
-    public string NetworkSummary => $"↓ {Download:0.0}  ·  ↑ {Upload:0.0} Mbps";
+    public string NetworkSummary => _networkSamples > 1 ? $"↓ {Download:0.0}  ·  ↑ {Upload:0.0} Mbps" : "Collecting network counter baseline…";
     public IReadOnlyList<double> CpuHistory => _cpuHistory.ToArray();
     public IReadOnlyList<double> MemoryHistory => _memoryHistory.ToArray();
     public IReadOnlyList<double> StorageHistory => _storageHistory.ToArray();
@@ -113,7 +113,7 @@ public sealed class OverviewModuleViewModel : MonitorModuleViewModel
     public override void Update(SystemSnapshot snapshot)
     {
         Cpu = snapshot.CpuUsage; Memory = snapshot.MemoryUsage; Storage = snapshot.StorageUsage;
-        Download = snapshot.DownloadMbps; Upload = snapshot.UploadMbps; MemoryTotal = snapshot.MemoryTotal; StorageTotal = snapshot.StorageTotal;
+        Download = snapshot.DownloadMbps; Upload = snapshot.UploadMbps; MemoryTotal = snapshot.MemoryTotal; StorageTotal = snapshot.StorageTotal; _networkSamples++;
         ThreadCount = snapshot.CpuInfo?.ThreadCount ?? (snapshot.Cores.Count > 0 ? snapshot.Cores.Count : Environment.ProcessorCount);
         SensorCount = snapshot.Sensors.Count; ProcessCount = snapshot.ProcessCount;
         Uptime = $"{(int)snapshot.Uptime.TotalHours}h {snapshot.Uptime.Minutes:00}m";
@@ -668,6 +668,7 @@ public sealed class NetworkModuleViewModel : MonitorModuleViewModel
     private const int HistoryLimit = 60;
     private readonly List<double> _downloadHistory = new(), _uploadHistory = new();
     private double _download, _upload;
+    private int _snapshotCount;
     public double Download { get => _download; private set => SetProperty(ref _download, value); }
     public double Upload { get => _upload; private set => SetProperty(ref _upload, value); }
     public IReadOnlyList<double> DownloadHistory => _downloadHistory.ToArray();
@@ -677,17 +678,25 @@ public sealed class NetworkModuleViewModel : MonitorModuleViewModel
     public double PeakUpload => _uploadHistory.DefaultIfEmpty().Max();
     public double CombinedThroughput => Download + Upload;
     public int SampleCount => _downloadHistory.Count;
-    public bool HasSamples => SampleCount > 1;
-    public string AggregateLabel => $"↓ {Download:0.00} Mbps   ↑ {Upload:0.00} Mbps";
-    public string SamplingNote => "Aggregate Windows interface counters · 60 latest samples";
+    public bool HasSamples => SampleCount > 0;
+    public bool HasNoSamples => !HasSamples;
+    public string DownloadLabel => HasSamples ? $"{Download:0.00} Mbps" : "N/A";
+    public string UploadLabel => HasSamples ? $"{Upload:0.00} Mbps" : "N/A";
+    public string PeakDownloadLabel => HasSamples ? $"{PeakDownload:0.00} Mbps" : "N/A";
+    public string PeakUploadLabel => HasSamples ? $"{PeakUpload:0.00} Mbps" : "N/A";
+    public string CombinedLabel => HasSamples ? $"{CombinedThroughput:0.00} Mbps" : "Collecting…";
+    public string AggregateLabel => HasSamples ? $"↓ {Download:0.00} Mbps   ↑ {Upload:0.00} Mbps" : "Collecting network counter baseline…";
+    public string SamplingNote => HasSamples ? "Aggregate Windows interface counters · up to 60 calculated intervals" : "Waiting for a second counter sample to calculate throughput";
     public NetworkModuleViewModel() : base("Network") { }
     public override void Update(SystemSnapshot snapshot)
     {
         Download = snapshot.DownloadMbps; Upload = snapshot.UploadMbps;
-        Append(_downloadHistory, Download); Append(_uploadHistory, Upload);
+        if (_snapshotCount > 0) { Append(_downloadHistory, Download); Append(_uploadHistory, Upload); }
+        _snapshotCount++;
         OnPropertyChanged(nameof(DownloadHistory)); OnPropertyChanged(nameof(UploadHistory)); OnPropertyChanged(nameof(ScaleMaximum));
         OnPropertyChanged(nameof(PeakDownload)); OnPropertyChanged(nameof(PeakUpload)); OnPropertyChanged(nameof(AggregateLabel));
-        OnPropertyChanged(nameof(CombinedThroughput)); OnPropertyChanged(nameof(SampleCount)); OnPropertyChanged(nameof(HasSamples));
+        OnPropertyChanged(nameof(CombinedThroughput)); OnPropertyChanged(nameof(SampleCount)); OnPropertyChanged(nameof(HasSamples)); OnPropertyChanged(nameof(HasNoSamples));
+        OnPropertyChanged(nameof(DownloadLabel)); OnPropertyChanged(nameof(UploadLabel)); OnPropertyChanged(nameof(PeakDownloadLabel)); OnPropertyChanged(nameof(PeakUploadLabel)); OnPropertyChanged(nameof(CombinedLabel)); OnPropertyChanged(nameof(SamplingNote));
     }
     private static void Append(List<double> values, double value) { if (!double.IsFinite(value) || value < 0) return; values.Add(value); while (values.Count > HistoryLimit) values.RemoveAt(0); }
 }
@@ -725,6 +734,7 @@ public sealed class OverlayModuleViewModel : MonitorModuleViewModel
 {
     private bool _isEnabled, _alwaysOnTop = true, _showCpu = true, _showMemory = true, _showNetwork = true;
     private double _cpu, _memory, _memoryTotal, _download, _upload;
+    private int _networkSamples;
     private Action<bool>? _visibilityChanged, _topmostChanged;
     public bool IsEnabled { get => _isEnabled; set { if (SetProperty(ref _isEnabled, value)) { OnPropertyChanged(nameof(StatusLabel)); OnPropertyChanged(nameof(PreviewOpacity)); _visibilityChanged?.Invoke(value); } } }
     public bool AlwaysOnTop { get => _alwaysOnTop; set { if (SetProperty(ref _alwaysOnTop, value)) _topmostChanged?.Invoke(value); } }
@@ -739,7 +749,9 @@ public sealed class OverlayModuleViewModel : MonitorModuleViewModel
     public double Upload { get => _upload; private set => SetProperty(ref _upload, value); }
     public string StatusLabel => IsEnabled ? "OVERLAY ON" : "PREVIEW ONLY";
     public double PreviewOpacity => IsEnabled ? 1 : 0.72;
-    public string NetworkText => $"↓ {Download:0.0}  ↑ {Upload:0.0} Mbps";
+    public string NetworkText => _networkSamples > 1 ? $"↓ {Download:0.0}  ↑ {Upload:0.0} Mbps" : "Collecting network counter baseline…";
+    public string DownloadLabel => _networkSamples > 1 ? $"{Download:0.0} Mbps" : "N/A";
+    public string UploadLabel => _networkSamples > 1 ? $"{Upload:0.0} Mbps" : "N/A";
     public bool HasVisibleMetrics => ShowCpu || ShowMemory || ShowNetwork;
     public bool HasNoVisibleMetrics => !HasVisibleMetrics;
 
@@ -751,8 +763,8 @@ public sealed class OverlayModuleViewModel : MonitorModuleViewModel
     }
     public override void Update(SystemSnapshot snapshot)
     {
-        Cpu = snapshot.CpuUsage; Memory = snapshot.MemoryUsage; _memoryTotal = snapshot.MemoryTotal; Download = snapshot.DownloadMbps; Upload = snapshot.UploadMbps;
-        OnPropertyChanged(nameof(MemoryLabel)); OnPropertyChanged(nameof(HasMemoryData)); OnPropertyChanged(nameof(NetworkText));
+        Cpu = snapshot.CpuUsage; Memory = snapshot.MemoryUsage; _memoryTotal = snapshot.MemoryTotal; Download = snapshot.DownloadMbps; Upload = snapshot.UploadMbps; _networkSamples++;
+        OnPropertyChanged(nameof(MemoryLabel)); OnPropertyChanged(nameof(HasMemoryData)); OnPropertyChanged(nameof(NetworkText)); OnPropertyChanged(nameof(DownloadLabel)); OnPropertyChanged(nameof(UploadLabel));
     }
 
     private void NotifyVisibleMetricsChanged() { OnPropertyChanged(nameof(HasVisibleMetrics)); OnPropertyChanged(nameof(HasNoVisibleMetrics)); }
