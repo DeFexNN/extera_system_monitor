@@ -53,23 +53,35 @@ public sealed class CpuWidgetViewModel : ViewModelBase
     public int GridColumn { get => _gridColumn; set => SetProperty(ref _gridColumn, Math.Clamp(value, 0, 11)); }
     public int GridRow { get => _gridRow; set => SetProperty(ref _gridRow, Math.Max(0, value)); }
     public int GridColumnSpan { get => _gridColumnSpan; set => SetProperty(ref _gridColumnSpan, Math.Clamp(value, 1, 12)); }
-    public int GridRowSpan { get => _gridRowSpan; set => SetProperty(ref _gridRowSpan, Math.Clamp(value, 1, 8)); }
+    public int GridRowSpan
+    {
+        get => _gridRowSpan;
+        set
+        {
+            if (!SetProperty(ref _gridRowSpan, Math.Clamp(value, 1, 8))) return;
+            OnPropertyChanged(nameof(IsCollapsed)); OnPropertyChanged(nameof(IsExpanded)); OnPropertyChanged(nameof(CollapseActionText));
+        }
+    }
+    public bool IsCollapsed => GridRowSpan == 1;
+    public bool IsExpanded => !IsCollapsed;
+    public string CollapseActionText => IsCollapsed ? "＋" : "−";
     public int CoreColumnCount
     {
         get
         {
-            var count = Math.Max(1, CoreLoads.Count);
-            var cell = Math.Max(1, CoreGaugeSize + 18);
-            var maxColumns = Math.Max(1, Math.Min(8, count));
-            return Math.Clamp((int)(Math.Max(1, Width - 32) / cell), Math.Min(2, maxColumns), maxColumns);
+            var maxColumns = Math.Max(1, Math.Min(8, CoreLoads.Count));
+            return Math.Clamp((int)(Math.Max(1, Width - 32) / 64d), Math.Min(2, maxColumns), maxColumns);
         }
     }
-    public double CoreGaugeSize => Math.Clamp(Math.Min((Width - 34) / Math.Max(2, CoreColumnCount), (Height - 60) / Math.Max(1, Math.Ceiling(Math.Max(1, CoreLoads.Count) / (double)Math.Max(2, CoreColumnCount))) - 18), 34, 86);
+    public double CoreGaugeSize => Math.Clamp(Math.Min((Width - 34) / Math.Max(1, CoreColumnCount) - 10, (Height - 88) / Math.Max(1, Math.Ceiling(Math.Max(1, CoreLoads.Count) / (double)Math.Max(1, CoreColumnCount))) - 8), 24, 86);
     public double CoreValueFontSize => Math.Clamp(CoreGaugeSize * 0.22, 9, 16);
+    public string CoreCountText => $"{CoreLoads.Count} LOGICAL PROCESSORS";
     public string WidgetHeaderTitle => Width < 250 ? Kind switch { "Temperature" => "CPU TEMP", "Cores" => "CORE LOAD", _ => Title } : Title;
     public double WidgetHeaderFontSize => Width < 230 ? 8 : Width < 330 ? 9 : 10;
     public double WidgetValueFontSize => Math.Clamp(Width * 0.105, 20, 42);
     public double GraphHeight => Math.Clamp(Height * 0.28, 38, 62);
+    public double GraphMinimum => IsTemperature ? 20 : 0;
+    public double GraphMaximum => IsTemperature ? 110 : IsClock ? 6000 : 100;
     public bool InfoExpanded { get => _infoExpanded; set => SetProperty(ref _infoExpanded, value); }
     public int Style
     {
@@ -100,12 +112,14 @@ public sealed class CpuWidgetViewModel : ViewModelBase
     public string AccentColorHex => ToHex(SelectedColor);
     public ICommand CycleStyleCommand { get; }
     public ICommand AddStyleCommand { get; }
+    public ICommand ToggleCollapseCommand { get; }
     public Action? Changed { get; set; }
 
     public CpuWidgetViewModel(string kind, double x, double y, double width, double height)
     {
         Kind = kind; _x = x; _y = y; _width = Math.Max(MinimumWidth, width); _height = Math.Max(MinimumHeight, height);
         CycleStyleCommand = new RelayCommand(_ => CycleStyle()); AddStyleCommand = new RelayCommand(_ => AddStyle());
+        ToggleCollapseCommand = new RelayCommand(_ => ToggleCollapse());
         Styles.Add(new CpuWidgetStyleViewModel(1, "#E7F6F2", "#2C3333", "#395B64", "#A5C9CA", "#395B64"));
         Styles.Add(new CpuWidgetStyleViewModel(2, "#2C3333", "#E7F6F2", "#A5C9CA", "#395B64", "#A5C9CA"));
         Styles.Add(new CpuWidgetStyleViewModel(3, "#FFF1D6", "#523C2A", "#83684A", "#D6B779", "#B66A1C"));
@@ -135,7 +149,7 @@ public sealed class CpuWidgetViewModel : ViewModelBase
                 else CoreLoads.Add(new CoreLoadViewModel(snapshot.Cores[index], ActiveStyle.AccentBrush, ActiveStyle.BorderBrush, ActiveStyle.TextBrush));
             }
             while (CoreLoads.Count > snapshot.Cores.Count) CoreLoads.RemoveAt(CoreLoads.Count - 1);
-            OnPropertyChanged(nameof(CoreColumnCount)); OnPropertyChanged(nameof(CoreGaugeSize));
+            OnPropertyChanged(nameof(CoreColumnCount)); OnPropertyChanged(nameof(CoreGaugeSize)); OnPropertyChanged(nameof(CoreCountText));
         }
 
         var values = IsLoad ? cpuValues : IsTemperature ? temperatureValues.Where(value => value > 0).ToArray() : IsClock ? telemetry.ClockHistory : IsPower ? telemetry.PowerHistory : IsVoltage ? telemetry.VoltageHistory : Array.Empty<double>();
@@ -172,6 +186,7 @@ public sealed class CpuWidgetViewModel : ViewModelBase
     }
 
     private void CycleStyle() { var options = StyleOptions; var index = Array.IndexOf(options.ToArray(), Style); Style = options[(index + 1) % options.Count]; }
+    private void ToggleCollapse() { GridRowSpan = IsCollapsed ? (Kind is "Cores" or "History" or "PerCore" ? 3 : 2) : 1; Changed?.Invoke(); }
     private void AddStyle() { var next = Styles.Count == 0 ? 1 : Styles.Max(style => style.Index) + 1; var style = ActiveStyle.Clone(next); style.Changed = StyleChanged; Styles.Add(style); OnPropertyChanged(nameof(StyleOptions)); Style = next; Changed?.Invoke(); }
     private void StyleChanged() { NotifyVisuals(); }
     private void NotifyVisuals()

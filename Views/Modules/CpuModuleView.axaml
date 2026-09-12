@@ -6,12 +6,12 @@
              x:CompileBindings="False">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
     <StackPanel Margin="24,20,24,28" Spacing="14">
-      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="14">
+      <StackPanel Spacing="10">
         <StackPanel Spacing="3" VerticalAlignment="Center">
           <TextBlock Text="CPU" FontSize="30" FontWeight="SemiBold"/>
           <TextBlock Text="Monitor your processor in real time. Arrange cards to build your workspace." Classes="muted" FontSize="13" TextWrapping="Wrap"/>
         </StackPanel>
-        <WrapPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+        <WrapPanel VerticalAlignment="Center">
           <Button Classes="module-action" Content="＋ ADD WIDGET" Margin="0,0,8,6">
             <Button.Flyout>
               <Flyout>
@@ -92,7 +92,7 @@
             </Button.Flyout>
           </Button>
         </WrapPanel>
-      </Grid>
+      </StackPanel>
 
       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
         <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
@@ -147,6 +147,7 @@
                             </Flyout>
                           </Button.Flyout>
                         </Button>
+                        <Button Classes="toolbar-action" Content="{Binding CollapseActionText}" Command="{Binding ToggleCollapseCommand}" Foreground="{Binding MutedBrush}" Padding="6,4" ToolTip.Tip="Collapse or expand card"/>
                         <Button Classes="toolbar-action" Content="ⓘ" Foreground="{Binding MutedBrush}" Padding="6,4" ToolTip.Tip="What this card shows">
                           <Button.Flyout><Flyout><Border Width="280" Padding="12" Background="{DynamicResource ThemeWindowBrush}" BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="1" CornerRadius="10"><TextBlock Text="{Binding InfoText}" TextWrapping="Wrap" FontSize="12" LineHeight="17"/></Border></Flyout></Button.Flyout>
                         </Button>
@@ -154,10 +155,10 @@
                       </StackPanel>
                     </Grid>
 
-                    <Grid Grid.Row="1">
+                    <Grid Grid.Row="1" IsVisible="{Binding IsExpanded}">
                       <StackPanel Spacing="7" VerticalAlignment="Center" IsVisible="{Binding IsMetricCard}">
                         <TextBlock Text="{Binding ValueText}" Foreground="{Binding TextBrush}" FontSize="{Binding WidgetValueFontSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                        <controls:TelemetryGraph Height="{Binding GraphHeight}" Values="{Binding GraphValues}" Stroke="{Binding GraphBrush}" Minimum="0" Maximum="100"/>
+                        <controls:TelemetryGraph Height="{Binding GraphHeight}" Values="{Binding GraphValues}" Stroke="{Binding GraphBrush}" Minimum="{Binding GraphMinimum}" Maximum="{Binding GraphMaximum}"/>
                         <Grid ColumnDefinitions="*,*,*" ColumnSpacing="5">
                           <StackPanel Orientation="Horizontal" Spacing="4"><TextBlock Text="MIN" Classes="muted" FontSize="9"/><TextBlock Text="{Binding StatMinimum}" Foreground="{Binding TextBrush}" FontSize="10" TextTrimming="CharacterEllipsis"/></StackPanel>
                           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center"><TextBlock Text="AVG" Classes="muted" FontSize="9"/><TextBlock Text="{Binding StatAverage}" Foreground="{Binding TextBrush}" FontSize="10" TextTrimming="CharacterEllipsis"/></StackPanel>
@@ -165,20 +166,23 @@
                         </Grid>
                       </StackPanel>
 
-                      <ItemsControl IsVisible="{Binding IsCores}" ItemsSource="{Binding CoreLoads}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="{Binding CoreColumnCount}"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate>
-                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="2">
-                              <Grid Width="{Binding DataContext.CoreGaugeSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Height="{Binding DataContext.CoreGaugeSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
-                                <controls:CoreLoadGauge Usage="{Binding UsagePercent}" Accent="{Binding AccentBrush}" Track="{Binding BorderBrush}"/>
-                                <TextBlock Text="{Binding UsagePercent, StringFormat={}{0:0}%}" Foreground="{Binding TextBrush}" FontSize="{Binding DataContext.CoreValueFontSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                              </Grid>
-                              <TextBlock Text="{Binding Label}" Foreground="{Binding MutedBrush}" FontSize="10" HorizontalAlignment="Center"/>
-                            </StackPanel>
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
+                      <StackPanel IsVisible="{Binding IsCores}" Spacing="5">
+                        <TextBlock Text="{Binding CoreCountText}" Foreground="{Binding MutedBrush}" FontSize="9" LetterSpacing="0.8"/>
+                        <ItemsControl ItemsSource="{Binding CoreLoads}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                          <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="{Binding CoreColumnCount}"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                              <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="2">
+                                <Grid Width="{Binding DataContext.CoreGaugeSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Height="{Binding DataContext.CoreGaugeSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
+                                  <controls:CoreLoadGauge Usage="{Binding UsagePercent}" Accent="{Binding AccentBrush}" Track="{Binding BorderBrush}"/>
+                                  <TextBlock Text="{Binding UsagePercent, StringFormat={}{0:0}%}" Foreground="{Binding TextBrush}" FontSize="{Binding DataContext.CoreValueFontSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Grid>
+                                <TextBlock Text="{Binding Label}" Foreground="{Binding MutedBrush}" FontSize="10" HorizontalAlignment="Center"/>
+                              </StackPanel>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
 
                       <Grid IsVisible="{Binding IsHistory}" RowDefinitions="Auto,*" RowSpacing="6">
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
@@ -216,7 +220,7 @@
                       </ItemsControl>
 
                       <ItemsControl IsVisible="{Binding IsPowerLimits}" ItemsSource="{Binding DataContext.Telemetry.PowerLimits, RelativeSource={RelativeSource AncestorType=UserControl}}" VerticalAlignment="Center">
-                        <ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="36,*,Auto" ColumnSpacing="7" Margin="0,4"><TextBlock Text="{Binding Label}" Classes="eyebrow" FontSize="10"/><ProgressBar Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Percent}" Height="7" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding Value}" FontSize="10"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
+                        <ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="36,*,Auto" ColumnSpacing="7" Margin="0,4"><TextBlock Text="{Binding Label}" Classes="eyebrow" FontSize="10"/><ProgressBar Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Percent}" Height="7" VerticalAlignment="Center" IsVisible="{Binding HasProgress}"/><TextBlock Grid.Column="2" Text="{Binding Value}" FontSize="10"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
                       </ItemsControl>
 
                       <ItemsControl IsVisible="{Binding IsFrequency}" ItemsSource="{Binding DataContext.Telemetry.FrequencyBands, RelativeSource={RelativeSource AncestorType=UserControl}}" VerticalAlignment="Center">

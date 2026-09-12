@@ -7,7 +7,7 @@ namespace ExteraMonitor.ViewModels.Modules;
 
 public sealed class CpuTelemetryViewModel : ViewModelBase
 {
-    private const int HistoryLimit = 1800;
+    private const int HistoryLimit = 900;
     private readonly List<double> _clockHistory = new();
     private readonly List<double> _powerHistory = new();
     private readonly List<double> _voltageHistory = new();
@@ -24,9 +24,9 @@ public sealed class CpuTelemetryViewModel : ViewModelBase
     public ObservableCollection<CpuMetricRowViewModel> CStates { get; } = new();
     public ObservableCollection<CpuMetricRowViewModel> AllSensors { get; } = new();
     public ObservableCollection<CpuProcessViewModel> TopProcesses { get; } = new();
-    public IReadOnlyList<double> ClockHistory => _clockHistory;
-    public IReadOnlyList<double> PowerHistory => _powerHistory;
-    public IReadOnlyList<double> VoltageHistory => _voltageHistory;
+    public IReadOnlyList<double> ClockHistory => _clockHistory.ToArray();
+    public IReadOnlyList<double> PowerHistory => _powerHistory.ToArray();
+    public IReadOnlyList<double> VoltageHistory => _voltageHistory.ToArray();
 
     public string CurrentClock { get; private set; } = "N/A";
     public string AverageClock { get; private set; } = "N/A";
@@ -214,7 +214,7 @@ public sealed class CpuTelemetryViewModel : ViewModelBase
         foreach (var label in new[] { "PPT", "TDC", "EDC" })
         {
             var sensor = powers.FirstOrDefault(item => Has(item.Name, label));
-            PowerLimits.Add(sensor is null ? CpuMetricRowViewModel.Unavailable(label) : new CpuMetricRowViewModel(label, $"{sensor.Value:0.0} {sensor.Unit}", sensor.Name));
+            PowerLimits.Add(sensor is null ? CpuMetricRowViewModel.Unavailable(label) : new CpuMetricRowViewModel(label, $"{sensor.Value:0.0} {sensor.Unit}", sensor.Unit.Contains('%') ? "reported percentage" : sensor.Name, sensor.Unit.Contains('%') ? Math.Clamp(sensor.Value, 0, 100) : 0));
         }
     }
 
@@ -262,9 +262,10 @@ public sealed class CpuMetricRowViewModel : ViewModelBase
     public string Value { get => _value; private set => SetProperty(ref _value, value); }
     public string Detail { get => _detail; private set => SetProperty(ref _detail, value); }
     public double Percent { get => _percent; private set => SetProperty(ref _percent, value); }
+    public bool HasProgress => Percent > 0 || Detail is "of sampled cores" or "reported by sensor" or "reported percentage";
     public bool IsAvailable => Value != "N/A";
     public CpuMetricRowViewModel(string label, string value, string detail = "", double percent = 0) { _label = label; _value = value; _detail = detail; _percent = percent; }
-    public void Update(string label, string value, string detail = "", double percent = 0) { Label = label; Value = value; Detail = detail; Percent = percent; }
+    public void Update(string label, string value, string detail = "", double percent = 0) { Label = label; Value = value; Detail = detail; Percent = percent; OnPropertyChanged(nameof(HasProgress)); }
     public static CpuMetricRowViewModel Unavailable(string label) => new(label, "N/A", "sensor not exposed");
 }
 
