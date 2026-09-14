@@ -47,7 +47,7 @@ If a source is still initializing, the boot screen stays visible and reports the
 - **GPU monitoring** — load and temperature through LibreHardwareMonitor with `nvidia-smi` fallback
 - **Honest storage metrics** — capacity usage, active time, and current read/write throughput are displayed as separate measurements
 - **Two complete themes** — a calm original light palette and a purpose-built dark palette
-- **Animated interface** — crossfade/slide navigation, responsive card hover states, and an animated code-native Extera mark
+- **Animated interface** — direction-aware vertical navigation, responsive card hover states, and an animated code-native Extera mark
 - **Modular CPU workspace** — draggable, resizable, styled telemetry cards with persisted layouts
 - **Local history** — lightweight SQLite persistence for samples, themes, accents, and widget configuration
 - **Desktop overlay** — compact always-on-top telemetry for use outside the main window
@@ -97,6 +97,29 @@ AvaloniaPanel/
 
 ---
 
+## Download
+
+Each release contains two Windows x64 packages:
+
+- **Installer** — installs into Program Files and creates Start menu and optional desktop shortcuts.
+- **Portable ZIP** — extract the complete folder anywhere and run `ExteraMonitor.exe`; no installation or separate .NET runtime is required.
+
+Both variants request administrator access when launched because the hardware telemetry driver must be loaded.
+
+## Supported systems
+
+| Component | Current support |
+|---|---|
+| Operating system | Windows 11 x64; Windows 10 x64 builds capable of running .NET 10, with LTSC/Enterprise being the currently supported Microsoft configurations |
+| CPU architecture | x64 only |
+| Full kernel CPU telemetry | AMD Family 19h processors (Zen 3 / Zen 4) |
+| Extended SMU power, voltage and clock telemetry | AMD Raphael, Family 19h Model 61h; verified on Ryzen 5 7500F |
+| GPU telemetry | NVIDIA and AMD GPUs exposed through LibreHardwareMonitor; NVIDIA also has an `nvidia-smi` fallback |
+| Windows 7 / 8.1 | Not supported by .NET 10 |
+| ARM64 / x86 | No release package or compatible bundled driver yet |
+
+The interface and standard Windows counters can support more hardware, but this release intentionally waits for its driver and required CPU/GPU sensor channels during startup. Systems outside the full-kernel matrix are therefore not claimed as fully supported yet.
+
 ## Build and Run
 
 ### Requirements
@@ -115,11 +138,13 @@ dotnet run
 
 The UI and standard Windows/LibreHardwareMonitor sources build without checked-in driver binaries. For the complete driver path, place the locally built `ExteraMonitorDriver.sys` and its loader runtime in `Driver/`; the project copies available runtime files into the output directory automatically.
 
-### Release build
+### Release packages
 
 ```powershell
-dotnet publish ExteraMonitor.csproj -c Release -r win-x64 --self-contained false
+.\Packaging\Build-Release.ps1 -Version 0.2.0
 ```
+
+The packaging script creates a self-contained installer, portable ZIP, and SHA-256 checksum file in `artifacts/`. Inno Setup 6 is required when building the installer locally.
 
 ---
 
@@ -146,7 +171,7 @@ The startup capture waits for verified telemetry, while the regular capture wait
 | Windows telemetry | NT system calls, WMI performance classes, .NET diagnostics |
 | Persistence | Microsoft.Data.Sqlite |
 | Motion | Avalonia page transitions, brush/transform transitions, 60 FPS logo control |
-| CI | GitHub Actions on Windows |
+| Packaging | Self-contained win-x64 publish, Inno Setup installer, portable ZIP |
 
 ---
 

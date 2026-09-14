@@ -1,6 +1,7 @@
 bin/
 obj/
 build-verify/
+artifacts/
 obj-verify/
 TempProbe/bin/
 TempProbe/obj/
