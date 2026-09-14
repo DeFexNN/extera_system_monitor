@@ -1,13 +1,19 @@
 [CmdletBinding()]
 param(
-    [string]$Version = "0.2.1"
+    [string]$Version = "0.2.1",
+    [switch]$AllowMissingDriverRuntime,
+    [string]$OutputDirectory
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$artifactsDir = Join-Path $projectRoot "artifacts"
+$artifactsDir = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
+    Join-Path $projectRoot "artifacts"
+} else {
+    [IO.Path]::GetFullPath($OutputDirectory)
+}
 $stageDir = Join-Path $artifactsDir "stage\ExteraMonitor"
 $portableName = "ExteraMonitor-v$Version-win-x64-portable"
 $portableDir = Join-Path $artifactsDir $portableName
@@ -20,16 +26,41 @@ $innoCandidates = @(
 $innoCompiler = $innoCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 if (-not $innoCompiler) { throw "Inno Setup 6 compiler was not found." }
 
-foreach ($required in @(
-    (Join-Path $projectRoot "Driver\ExteraMonitorDriver.sys"),
-    (Join-Path $projectRoot "Driver\kvc.exe"),
-    (Join-Path $projectRoot "Driver\kvc.dat"),
-    $innoCompiler
-)) {
+if (-not $AllowMissingDriverRuntime) {
+    $requiredRuntime = @(
+        (Join-Path $projectRoot "Driver\ExteraMonitorDriver.sys"),
+        (Join-Path $projectRoot "Driver\kvc.exe"),
+        (Join-Path $projectRoot "Driver\kvc.dat")
+    )
+    foreach ($required in $requiredRuntime) {
+        if (-not (Test-Path -LiteralPath $required)) { throw "Required release input is missing: $required" }
+    }
+} else {
+    $missingRuntime = @(
+        (Join-Path $projectRoot "Driver\ExteraMonitorDriver.sys"),
+        (Join-Path $projectRoot "Driver\kvc.exe"),
+        (Join-Path $projectRoot "Driver\kvc.dat")
+    ) | Where-Object { -not (Test-Path -LiteralPath $_) }
+    if ($missingRuntime.Count -gt 0) {
+        Write-Warning "Building without the locally excluded driver runtime files: $($missingRuntime -join ', ')"
+    }
+}
+
+foreach ($required in @($innoCompiler)) {
     if (-not (Test-Path -LiteralPath $required)) { throw "Required release input is missing: $required" }
 }
 
-if (Test-Path -LiteralPath $artifactsDir) { Remove-Item -LiteralPath $artifactsDir -Recurse -Force }
+foreach ($oldArtifact in @(
+    $stageDir,
+    $portableDir,
+    $portableZip,
+    (Join-Path $artifactsDir "ExteraMonitor-Setup-v$Version-win-x64.exe"),
+    (Join-Path $artifactsDir "SHA256SUMS.txt")
+)) {
+    if (Test-Path -LiteralPath $oldArtifact) {
+        Remove-Item -LiteralPath $oldArtifact -Recurse -Force
+    }
+}
 New-Item -ItemType Directory -Path $stageDir -Force | Out-Null
 
 dotnet publish (Join-Path $projectRoot "ExteraMonitor.csproj") `

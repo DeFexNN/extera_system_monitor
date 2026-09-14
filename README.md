@@ -148,6 +148,8 @@ The UI and standard Windows/LibreHardwareMonitor sources build without checked-i
 
 The packaging script creates a self-contained installer, portable ZIP, and SHA-256 checksum file in `artifacts/`. Inno Setup 6 is required when building the installer locally.
 
+Every push and pull request also runs the [**Build Windows installer** workflow](https://github.com/DeFexNN/extera_system_monitor/actions/workflows/build-installer.yml). Download its installer, portable ZIP, and checksums from the workflow run's **Artifacts** section. The driver runtime binaries are excluded from Git, so automatic cloud builds omit those local files; add the runtime bundle locally before running the release script when a driver-enabled package is required.
+
 ---
 
 ## Visual Verification
