@@ -24,6 +24,8 @@ public interface IThemePaletteRepository
 public sealed class SqliteMetricsHistoryRepository : IMetricsHistoryRepository, ICpuCustomizationRepository, IThemePaletteRepository
 {
     private readonly string _connectionString;
+    private DateTime _lastDetailStoreUtc = DateTime.MinValue;
+    private static readonly TimeSpan DetailStoreInterval = TimeSpan.FromSeconds(30);
     public string DatabasePath { get; }
 
     public SqliteMetricsHistoryRepository(bool readOnly = false)
@@ -37,12 +39,18 @@ public sealed class SqliteMetricsHistoryRepository : IMetricsHistoryRepository, 
 
     public void Store(SystemSnapshot snapshot)
     {
+        var timestamp = DateTime.UtcNow;
         using var connection = new SqliteConnection(_connectionString); connection.Open(); using var transaction = connection.BeginTransaction();
         using var command = connection.CreateCommand(); command.Transaction = transaction;
         command.CommandText = "INSERT INTO snapshots(timestamp_utc,cpu_usage,ExteraMonitorDrivererature,memory_usage,memory_total,storage_usage,download_mbps,upload_mbps,process_count,uptime_seconds) VALUES($timestamp,$cpu,$temperature,$memory,$memoryTotal,$storage,$download,$upload,$processes,$uptime); SELECT last_insert_rowid();";
-        command.Parameters.AddWithValue("$timestamp", DateTime.UtcNow.ToString("O")); command.Parameters.AddWithValue("$cpu", snapshot.CpuUsage); command.Parameters.AddWithValue("$temperature", snapshot.CpuTemperature); command.Parameters.AddWithValue("$memory", snapshot.MemoryUsage); command.Parameters.AddWithValue("$memoryTotal", snapshot.MemoryTotal); command.Parameters.AddWithValue("$storage", snapshot.StorageUsage); command.Parameters.AddWithValue("$download", snapshot.DownloadMbps); command.Parameters.AddWithValue("$upload", snapshot.UploadMbps); command.Parameters.AddWithValue("$processes", snapshot.ProcessCount); command.Parameters.AddWithValue("$uptime", snapshot.Uptime.TotalSeconds);
+        command.Parameters.AddWithValue("$timestamp", timestamp.ToString("O")); command.Parameters.AddWithValue("$cpu", snapshot.CpuUsage); command.Parameters.AddWithValue("$temperature", snapshot.CpuTemperature); command.Parameters.AddWithValue("$memory", snapshot.MemoryUsage); command.Parameters.AddWithValue("$memoryTotal", snapshot.MemoryTotal); command.Parameters.AddWithValue("$storage", snapshot.StorageUsage); command.Parameters.AddWithValue("$download", snapshot.DownloadMbps); command.Parameters.AddWithValue("$upload", snapshot.UploadMbps); command.Parameters.AddWithValue("$processes", snapshot.ProcessCount); command.Parameters.AddWithValue("$uptime", snapshot.Uptime.TotalSeconds);
         var snapshotId = (long)(command.ExecuteScalar() ?? 0L);
-        InsertCores(connection, transaction, snapshotId, snapshot.Cores); InsertDisks(connection, transaction, snapshotId, snapshot.Disks); InsertSensors(connection, transaction, snapshotId, snapshot.Sensors); transaction.Commit();
+        if (timestamp - _lastDetailStoreUtc >= DetailStoreInterval)
+        {
+            InsertCores(connection, transaction, snapshotId, snapshot.Cores); InsertDisks(connection, transaction, snapshotId, snapshot.Disks); InsertSensors(connection, transaction, snapshotId, snapshot.Sensors);
+            _lastDetailStoreUtc = timestamp;
+        }
+        transaction.Commit();
     }
 
     public CpuCustomizationSettings LoadCpuCustomization()

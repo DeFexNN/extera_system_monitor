@@ -108,6 +108,11 @@ static PDEVICE_OBJECT g_Device;
 static FAST_MUTEX g_PciMutex;
 static PVOID g_PmTableMapping;
 static ULONGLONG g_PmTablePhysicalBase;
+static ULONG g_PmTableVersion;
+static ULONG g_PmTableSize;
+static UCHAR g_DataFabricBus;
+static UCHAR g_DataFabricSlot;
+static BOOLEAN g_DataFabricLocated;
 
 static ULONG PciRead32(UCHAR bus, UCHAR slot, ULONG offset)
 {
@@ -194,43 +199,51 @@ static BOOLEAN PmFloatValid(float value)
     return value == value && value > -100000.0f && value < 100000.0f;
 }
 
+static VOID ResetPmTableMapping(VOID)
+{
+    if (g_PmTableMapping != NULL) MmUnmapIoSpace(g_PmTableMapping, PAGE_SIZE);
+    g_PmTableMapping = NULL;
+    g_PmTablePhysicalBase = 0;
+    g_PmTableVersion = 0;
+    g_PmTableSize = 0;
+}
+
 static BOOLEAN ReadRaphaelPmTable(UCHAR bus, UCHAR slot, PEXTERA_MONITOR_TELEMETRY result)
 {
     if (result->CpuFamily != 0x19 || result->CpuModel != 0x61) return FALSE;
 
-    result->SmuStatus = 10;
     ULONG args[6] = { 0 };
-    if (!SendRaphaelReadOnlyCommand(bus, slot, RAPHAEL_PM_VERSION_COMMAND, args)) return FALSE;
-    result->SmuStatus = 11;
-    result->PmTableVersion = args[0];
-    ULONG tableSize = 0;
-    if (args[0] == RAPHAEL_PM_TABLE_VERSION) tableSize = RAPHAEL_PM_TABLE_SIZE;
-    else if (args[0] == RAPHAEL_PM_TABLE_VERSION_ALT) tableSize = 0x950;
-    else return FALSE;
+    if (g_PmTableMapping == NULL) {
+        result->SmuStatus = 10;
+        if (!SendRaphaelReadOnlyCommand(bus, slot, RAPHAEL_PM_VERSION_COMMAND, args)) return FALSE;
+        result->SmuStatus = 11;
+        if (args[0] == RAPHAEL_PM_TABLE_VERSION) g_PmTableSize = RAPHAEL_PM_TABLE_SIZE;
+        else if (args[0] == RAPHAEL_PM_TABLE_VERSION_ALT) g_PmTableSize = 0x950;
+        else return FALSE;
+        g_PmTableVersion = args[0];
 
-    RtlZeroMemory(args, sizeof(args));
-    args[0] = 1;
-    args[1] = 1;
-    if (!SendRaphaelReadOnlyCommand(bus, slot, RAPHAEL_PM_BASE_COMMAND, args)) return FALSE;
-    result->SmuStatus = 12;
-    ULONGLONG physicalBase = ((ULONGLONG)args[1] << 32) | args[0];
-    if (physicalBase == 0 || (physicalBase & 3) != 0) return FALSE;
-
-    if (g_PmTableMapping == NULL || g_PmTablePhysicalBase != physicalBase) {
-        if (g_PmTableMapping != NULL) {
-            MmUnmapIoSpace(g_PmTableMapping, PAGE_SIZE);
-            g_PmTableMapping = NULL;
-        }
+        RtlZeroMemory(args, sizeof(args));
+        args[0] = 1;
+        args[1] = 1;
+        if (!SendRaphaelReadOnlyCommand(bus, slot, RAPHAEL_PM_BASE_COMMAND, args)) return FALSE;
+        result->SmuStatus = 12;
+        ULONGLONG physicalBase = ((ULONGLONG)args[1] << 32) | args[0];
+        if (physicalBase == 0 || (physicalBase & 3) != 0) return FALSE;
         PHYSICAL_ADDRESS address;
         address.QuadPart = physicalBase;
         g_PmTableMapping = MmMapIoSpace(address, PAGE_SIZE, MmNonCached);
         if (g_PmTableMapping == NULL) return FALSE;
         g_PmTablePhysicalBase = physicalBase;
     }
+    result->PmTableVersion = g_PmTableVersion;
+    result->PmTableSize = g_PmTableSize;
     result->SmuStatus = 13;
 
     RtlZeroMemory(args, sizeof(args));
-    if (!SendRaphaelReadOnlyCommand(bus, slot, RAPHAEL_PM_TRANSFER_COMMAND, args)) return FALSE;
+    if (!SendRaphaelReadOnlyCommand(bus, slot, RAPHAEL_PM_TRANSFER_COMMAND, args)) {
+        ResetPmTableMapping();
+        return FALSE;
+    }
     result->SmuStatus = 14;
 
     volatile ULONG* table = (volatile ULONG*)g_PmTableMapping;
@@ -239,7 +252,6 @@ static BOOLEAN ReadRaphaelPmTable(UCHAR bus, UCHAR slot, PEXTERA_MONITOR_TELEMET
         ULONG raw = table[index];
         RtlCopyMemory(&values[index], &raw, sizeof(raw));
     }
-    result->PmTableSize = tableSize;
     result->PmCapabilities = 1;
     result->PmPpt = values[3];
     result->PmPackageTemperature = values[11];
@@ -261,6 +273,7 @@ static BOOLEAN ReadRaphaelPmTable(UCHAR bus, UCHAR slot, PEXTERA_MONITOR_TELEMET
     result->PmLdoVdd = values[268];
     if (!PmFloatValid(result->PmPpt) && !PmFloatValid(result->PmPackageTemperature)) {
         result->PmCapabilities = 0;
+        ResetPmTableMapping();
         return FALSE;
     }
     result->SmuStatus = 15;
@@ -334,14 +347,17 @@ static NTSTATUS ReadTelemetry(PEXTERA_MONITOR_TELEMETRY result)
     ReadCpuIdentity(&result->CpuFamily, &result->CpuModel);
     if (result->CpuFamily != 0x19) return STATUS_SUCCESS;
 
-    UCHAR bus = 0;
-    UCHAR slot = 0;
-    if (!FindAmdDataFabric(&bus, &slot)) {
-        result->DriverStatus = STATUS_DEVICE_NOT_READY;
-        return STATUS_SUCCESS;
-    }
-
     ExAcquireFastMutex(&g_PciMutex);
+    if (!g_DataFabricLocated) {
+        if (!FindAmdDataFabric(&g_DataFabricBus, &g_DataFabricSlot)) {
+            ExReleaseFastMutex(&g_PciMutex);
+            result->DriverStatus = STATUS_DEVICE_NOT_READY;
+            return STATUS_SUCCESS;
+        }
+        g_DataFabricLocated = TRUE;
+    }
+    UCHAR bus = g_DataFabricBus;
+    UCHAR slot = g_DataFabricSlot;
     BOOLEAN temperatureRead = ReadZenTemperature(bus, slot, result);
     // Some AM5 firmware exposes the SMN window through D0F0 instead of the
     // discovered DF F3 function. Keep the validated legacy path as a
@@ -477,10 +493,7 @@ static NTSTATUS DispatchDeviceControl(PDEVICE_OBJECT device, PIRP irp)
 
 static VOID DriverUnload(PDRIVER_OBJECT driver)
 {
-    if (g_PmTableMapping != NULL) {
-        MmUnmapIoSpace(g_PmTableMapping, PAGE_SIZE);
-        g_PmTableMapping = NULL;
-    }
+    ResetPmTableMapping();
     UNICODE_STRING dos = RTL_CONSTANT_STRING(DOS_NAME);
     IoDeleteSymbolicLink(&dos);
     if (driver->DeviceObject) IoDeleteDevice(driver->DeviceObject);

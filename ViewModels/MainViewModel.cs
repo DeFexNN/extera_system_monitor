@@ -7,7 +7,7 @@ using ExteraMonitor.ViewModels.Modules;
 namespace ExteraMonitor.ViewModels;
 public sealed class MainViewModel : ViewModelBase
 {
-    private readonly ISystemMetricsProvider _provider; private readonly IMetricsHistoryRepository _history; private readonly bool _persistUserData; private readonly DispatcherTimer _timer; private readonly Dictionary<string, ViewModelBase> _modules; private DateTime? _updated; private string _active = "Overview"; private bool _live = true; private ViewModelBase _activeModule = null!; private int _refreshInProgress;
+    private readonly ISystemMetricsProvider _provider; private readonly IMetricsHistoryRepository _history; private readonly bool _persistUserData; private readonly DispatcherTimer _timer; private readonly Dictionary<string, ViewModelBase> _modules; private readonly Dictionary<string, int> _navigationIndices; private DateTime? _updated; private SystemSnapshot? _latestSnapshot; private string _active = "Overview"; private bool _live = true; private ViewModelBase _activeModule = null!; private int _refreshInProgress;
     private bool _isStartupVisible = true, _driverReady, _sensorsReady, _telemetryReady, _holdStartupOverlay, _finishingStartup, _isNavigationTransitionReversed;
     private int _readySamples;
     private double _startupOpacity = 1, _startupProgress = 8;
@@ -16,12 +16,12 @@ public sealed class MainViewModel : ViewModelBase
     public ObservableCollection<NavigationItem> Navigation { get; } = new() { new("Overview", "⌂", true), new("CPU", "◒"), new("Memory", "▤"), new("Storage", "◫"), new("Network", "↗"), new("Processes", "≡"), new("Sensors", "°"), new("Driver", "⌁"), new("Settings", "⚙"), new("Overlay", "▣"), new("Software", "⊞") };
     public ViewModelBase ActiveModule { get => _activeModule; private set => SetProperty(ref _activeModule, value); }
     public string WorkstationName => $"{Environment.MachineName} / LOCAL";
-    public string ActiveSection { get => _active; set { if (_active == value || !_modules.ContainsKey(value)) return; var oldIndex = Navigation.ToList().FindIndex(item => item.Label == _active); var newIndex = Navigation.ToList().FindIndex(item => item.Label == value); IsNavigationTransitionReversed = newIndex < oldIndex; if (SetProperty(ref _active, value)) { foreach (var item in Navigation) item.IsSelected = item.Label == value; OnPropertyChanged(nameof(SelectedNavigationIndex)); ActiveModule = _modules[value]; } } }
+    public string ActiveSection { get => _active; set { if (_active == value || !_modules.TryGetValue(value, out var target)) return; IsNavigationTransitionReversed = _navigationIndices[value] < _navigationIndices[_active]; if (_latestSnapshot is { } snapshot) UpdateModule(target, snapshot); if (SetProperty(ref _active, value)) { foreach (var item in Navigation) item.IsSelected = item.Label == value; OnPropertyChanged(nameof(SelectedNavigationIndex)); ActiveModule = target; } } }
     public bool IsLive { get => _live; set { if (SetProperty(ref _live, value)) { OnPropertyChanged(nameof(StatusLabel)); OnPropertyChanged(nameof(LiveActionLabel)); } } }
     public string StatusLabel => IsLive ? "LIVE SAMPLING" : "SAMPLING PAUSED";
     public string LiveActionLabel => IsLive ? "PAUSE" : "RESUME";
     public string LastUpdated => _updated is { } updated ? $"LAST SAMPLE {updated:HH:mm:ss}" : "WAITING FOR FIRST SAMPLE";
-    public int SelectedNavigationIndex => Math.Max(0, Navigation.ToList().FindIndex(item => item.IsSelected));
+    public int SelectedNavigationIndex => _navigationIndices[_active];
     public bool IsNavigationTransitionReversed { get => _isNavigationTransitionReversed; private set => SetProperty(ref _isNavigationTransitionReversed, value); }
     public bool IsStartupVisible { get => _isStartupVisible; private set => SetProperty(ref _isStartupVisible, value); }
     public double StartupOpacity { get => _startupOpacity; private set => SetProperty(ref _startupOpacity, value); }
@@ -52,6 +52,7 @@ public sealed class MainViewModel : ViewModelBase
             catch (Exception) { }
         }
         _modules = new() { ["Overview"] = Overview, ["CPU"] = Cpu, ["Memory"] = Memory, ["Storage"] = Storage, ["Network"] = Network, ["Processes"] = Processes, ["Sensors"] = Sensors, ["Driver"] = Driver, ["Settings"] = Settings, ["Overlay"] = Overlay, ["Software"] = Software };
+        _navigationIndices = Navigation.Select((item, index) => (item.Label, index)).ToDictionary(item => item.Label, item => item.index);
         _activeModule = Overview;
         SelectSectionCommand = new RelayCommand(p => ActiveSection = p?.ToString() ?? "Overview");
         ToggleLiveCommand = new RelayCommand(_ => IsLive = !IsLive);
@@ -83,10 +84,28 @@ public sealed class MainViewModel : ViewModelBase
     private void ApplySnapshot(SystemSnapshot snapshot)
     {
         if (!IsLive) return;
-        Overview.Update(snapshot); Cpu.Update(snapshot); Memory.Update(snapshot); Storage.Update(snapshot); Network.Update(snapshot); Processes.Update(snapshot); Sensors.Update(snapshot); Overlay.Update(snapshot); Software.Update(snapshot);
+        _latestSnapshot = snapshot;
+        UpdateModule(ActiveModule, snapshot);
+        if (Overlay.IsEnabled && !ReferenceEquals(ActiveModule, Overlay)) Overlay.Update(snapshot);
         UpdateStartupState(snapshot);
         _updated = DateTime.Now;
         OnPropertyChanged(nameof(LastUpdated));
+    }
+
+    private void UpdateModule(ViewModelBase module, SystemSnapshot snapshot)
+    {
+        switch (module)
+        {
+            case OverviewModuleViewModel overview: overview.Update(snapshot); break;
+            case CpuModuleViewModel cpu: cpu.Update(snapshot); break;
+            case MemoryModuleViewModel memory: memory.Update(snapshot); break;
+            case StorageModuleViewModel storage: storage.Update(snapshot); break;
+            case NetworkModuleViewModel network: network.Update(snapshot); break;
+            case ProcessModuleViewModel processes: processes.Update(snapshot); break;
+            case SensorsModuleViewModel sensors: sensors.Update(snapshot); break;
+            case OverlayModuleViewModel overlay: overlay.Update(snapshot); break;
+            case SoftwareModuleViewModel software: software.Update(snapshot); break;
+        }
     }
 
     public void HoldStartupOverlayForCapture() => _holdStartupOverlay = true;

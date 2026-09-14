@@ -16,25 +16,42 @@ public sealed record HardwareReading(double CpuTemperature, IReadOnlyList<Hardwa
 
 public sealed class LibreHardwareSensorProvider : IHardwareSensorProvider
 {
-    private readonly Computer _computer = new()
+    private readonly Computer _realtimeComputer = new()
     {
-        IsCpuEnabled = true, IsGpuEnabled = true, IsMemoryEnabled = true,
+        IsCpuEnabled = true, IsGpuEnabled = true, IsMemoryEnabled = true
+    };
+    private readonly Computer _extendedComputer = new()
+    {
         IsMotherboardEnabled = true, IsStorageEnabled = true, IsNetworkEnabled = true,
         IsControllerEnabled = true, IsPowerMonitorEnabled = true
     };
     private readonly UpdateVisitor _visitor = new();
     private bool _opened;
+    private DateTime _lastExtendedRefresh = DateTime.MinValue;
+    private IReadOnlyList<HardwareSensorMetric> _extendedSensors = Array.Empty<HardwareSensorMetric>();
+    private static readonly TimeSpan ExtendedRefreshInterval = TimeSpan.FromSeconds(10);
 
     public HardwareReading Read()
     {
         try
         {
-            if (!_opened) { _computer.Open(); _opened = true; }
-            _computer.Accept(_visitor);
-            var sampledSensors = Flatten(_computer.Hardware)
+            if (!_opened) { _realtimeComputer.Open(); _extendedComputer.Open(); _opened = true; }
+            _realtimeComputer.Accept(_visitor);
+            var sampledSensors = Flatten(_realtimeComputer.Hardware)
                 .Where(sensor => sensor.Sensor.Value.HasValue)
                 .ToList();
             var sensors = sampledSensors.Select(sensor => new HardwareSensorMetric(sensor.HardwareName, sensor.Sensor.Name, sensor.Sensor.SensorType.ToString(), sensor.Sensor.Value!.Value, UnitFor(sensor.Sensor.SensorType))).ToList();
+            var now = DateTime.UtcNow;
+            if (_extendedSensors.Count == 0 || now - _lastExtendedRefresh >= ExtendedRefreshInterval)
+            {
+                _extendedComputer.Accept(_visitor);
+                _extendedSensors = Flatten(_extendedComputer.Hardware)
+                    .Where(sensor => sensor.Sensor.Value.HasValue)
+                    .Select(sensor => new HardwareSensorMetric(sensor.HardwareName, sensor.Sensor.Name, sensor.Sensor.SensorType.ToString(), sensor.Sensor.Value!.Value, UnitFor(sensor.Sensor.SensorType)))
+                    .ToArray();
+                _lastExtendedRefresh = now;
+            }
+            sensors.AddRange(_extendedSensors);
             var hasGpuLoad = sampledSensors.Any(sensor => sensor.HardwareType.ToString().StartsWith("Gpu", StringComparison.OrdinalIgnoreCase) && sensor.Sensor.SensorType == SensorType.Load);
             var hasGpuTemperature = sampledSensors.Any(sensor => sensor.HardwareType.ToString().StartsWith("Gpu", StringComparison.OrdinalIgnoreCase) && sensor.Sensor.SensorType == SensorType.Temperature);
             if (!hasGpuLoad || !hasGpuTemperature)
@@ -53,7 +70,13 @@ public sealed class LibreHardwareSensorProvider : IHardwareSensorProvider
         }
     }
 
-    public void Dispose() { if (_opened) _computer.Close(); }
+    public void Dispose()
+    {
+        if (!_opened) return;
+        _realtimeComputer.Close();
+        _extendedComputer.Close();
+        _opened = false;
+    }
 
     private static IEnumerable<(string HardwareName, HardwareType HardwareType, ISensor Sensor)> Flatten(IEnumerable<IHardware> hardware) => hardware.SelectMany(item => item.Sensors.Select(sensor => (item.Name, item.HardwareType, sensor)).Concat(Flatten(item.SubHardware)));
     private static string UnitFor(SensorType type) => type switch { SensorType.Temperature => "°C", SensorType.Load => "%", SensorType.Clock => "MHz", SensorType.Fan => "RPM", SensorType.Power => "W", SensorType.Current => "A", SensorType.Voltage => "V", SensorType.Factor => "x", SensorType.Data => "GB", SensorType.SmallData => "MB", _ => "" };

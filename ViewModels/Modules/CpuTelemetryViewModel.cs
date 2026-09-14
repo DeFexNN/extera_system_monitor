@@ -109,11 +109,17 @@ public sealed class CpuTelemetryViewModel : ViewModelBase
         CcdTemperature = ccd.Length == 0 ? "N/A" : $"avg {ccd.Average():0.0} °C • max {ccd.Max():0.0} °C";
         CoreTemperature = coreTemps.Length == 0 ? "N/A" : $"avg {coreTemps.Average():0.0} °C • max {coreTemps.Max():0.0} °C";
         var packageSensor = temperatures.FirstOrDefault(sensor => Has(sensor.Name, "package", "tctl", "tdie"));
-        SetRows(TemperatureSummaryRows,
-            new CpuMetricRowViewModel("Package / Tctl", packageSensor is null ? "N/A" : $"{packageSensor.Value:0.0} °C"),
-            new CpuMetricRowViewModel("CCD", ccd.Length == 0 ? "N/A" : $"{ccd.Max():0.0} °C"),
-            new CpuMetricRowViewModel("Core (avg)", coreTemps.Length == 0 ? "N/A" : $"{coreTemps.Average():0.0} °C"),
-            new CpuMetricRowViewModel("Core (max)", coreTemps.Length == 0 ? "N/A" : $"{coreTemps.Max():0.0} °C"));
+        var temperatureRows = new List<CpuMetricRowViewModel>
+        {
+            new("Package / Tctl", $"{(packageSensor?.Value ?? snapshot.CpuTemperature):0.0} °C")
+        };
+        if (ccd.Length > 0) temperatureRows.Add(new CpuMetricRowViewModel("CCD hotspot", $"{ccd.Max():0.0} °C"));
+        if (coreTemps.Length > 0)
+        {
+            temperatureRows.Add(new CpuMetricRowViewModel("Core average", $"{coreTemps.Average():0.0} °C"));
+            temperatureRows.Add(new CpuMetricRowViewModel("Core maximum", $"{coreTemps.Max():0.0} °C"));
+        }
+        SetRows(TemperatureSummaryRows, temperatureRows.ToArray());
 
         UpdateCores(snapshot.Cores, clocks, coreTemps);
         UpdateFrequencyBands(clocks);
