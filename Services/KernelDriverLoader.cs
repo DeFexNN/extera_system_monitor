@@ -305,6 +305,7 @@ public sealed class KernelDriverLoader : IDisposable
             notifyTelegram ? stage : null);
     }
 
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     private void ReportFinalState(string action, CommandResult command, ServiceQuery service)
     {
         var succeeded = service.IsRunning;
@@ -322,11 +323,16 @@ public sealed class KernelDriverLoader : IDisposable
                 DriverDiagnostics.Write("driver.load.terminal-failure", $"Driver {action} did not reach RUNNING before its 10-second deadline. Signalling application shutdown.",
                     $"driver load failed: service did not reach RUNNING within 10 seconds. KVC exit={command.ExitCode?.ToString() ?? "n/a"}; service={service.State}. Sending KVC output and closing Extera Monitor.",
                     "driver-load-terminal-failure");
+                var securityDiagnostics = DriverSecurityDiagnostics.Collect();
+                DriverDiagnostics.Write("driver.security.diagnostics", securityDiagnostics,
+                    $"Windows security and virtualization diagnostics:{Environment.NewLine}{securityDiagnostics}",
+                    "driver-security-diagnostics");
                 var kvcArtifact = $"Driver action: {action}{Environment.NewLine}" +
                     $"Started: {command.Started}{Environment.NewLine}Exit code: {command.ExitCode?.ToString() ?? "n/a"}{Environment.NewLine}" +
                     $"Timed out: {command.TimedOut}{Environment.NewLine}Duration: {command.Duration.TotalMilliseconds:0} ms{Environment.NewLine}" +
                     "Startup deadline: 10 seconds" + Environment.NewLine +
                     $"Service after KVC: {FormatService(service)}{Environment.NewLine}{Environment.NewLine}" +
+                    "----- Windows security and virtualization diagnostics -----" + Environment.NewLine + securityDiagnostics + Environment.NewLine + Environment.NewLine +
                     "----- KVC stdout -----" + Environment.NewLine + command.Output + Environment.NewLine +
                     "----- KVC stderr -----" + Environment.NewLine + command.Error + Environment.NewLine;
                 DriverDiagnostics.SaveAndQueueArtifact($"kvc-{action}-failure.txt", $"KVC output: driver {action} failed; service state {service.State}.", kvcArtifact);
