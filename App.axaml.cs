@@ -31,7 +31,7 @@ public partial class App : Application
             KernelDriverLoader.DriverLoadFailed += OnDriverLoadFailed;
             var captureUi = Program.CapturePath is not null;
             var viewModel = captureUi
-                ? new MainViewModel(SystemMetricsProviderFactory.Create(), new SqliteMetricsHistoryRepository(readOnly: true), persistUserData: false)
+                ? new MainViewModel(Program.CaptureLoadingScreen ? new SimulatedMetricsProvider() : SystemMetricsProviderFactory.Create(), new SqliteMetricsHistoryRepository(readOnly: true), persistUserData: false)
                 : new MainViewModel();
             if (captureUi)
             {

@@ -8,7 +8,7 @@ namespace ExteraMonitor.ViewModels;
 public sealed class MainViewModel : ViewModelBase
 {
     private readonly ISystemMetricsProvider _provider; private readonly IMetricsHistoryRepository _history; private readonly bool _persistUserData; private readonly DispatcherTimer _timer; private readonly Dictionary<string, ViewModelBase> _modules; private readonly Dictionary<string, int> _navigationIndices; private DateTime? _updated; private SystemSnapshot? _latestSnapshot; private string _active = "Overview"; private bool _live = true; private ViewModelBase _activeModule = null!; private int _refreshInProgress;
-    private bool _isStartupVisible = true, _driverReady, _sensorsReady, _telemetryReady, _holdStartupOverlay, _finishingStartup, _isNavigationTransitionReversed;
+    private bool _isStartupVisible = true, _driverReady, _sensorsReady, _telemetryReady, _holdStartupOverlay, _finishingStartup, _isNavigationTransitionReversed, _monitoringStarted;
     private int _readySamples;
     private double _startupOpacity = 1, _startupProgress = 8;
     private string _startupStatus = "STARTING KERNEL DRIVER", _startupDetail = "Connecting to ExteraMonitorDriver…";
@@ -58,6 +58,14 @@ public sealed class MainViewModel : ViewModelBase
         ToggleLiveCommand = new RelayCommand(_ => IsLive = !IsLive);
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _timer.Tick += (_, _) => RefreshAsync();
+    }
+
+    public void StartMonitoring()
+    {
+        if (_monitoringStarted) return;
+        _monitoringStarted = true;
+        StartupStatus = "STARTING KERNEL DRIVER";
+        StartupDetail = "Loading ExteraMonitorDriver and opening the telemetry channel…";
         RefreshAsync();
         _timer.Start();
     }

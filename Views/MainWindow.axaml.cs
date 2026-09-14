@@ -35,6 +35,10 @@ public partial class MainWindow : Window
             },
             topmost => { if (_overlayWindow is not null) _overlayWindow.Topmost = topmost; });
 
+        // Let Avalonia render the startup screen before the background sampler can
+        // attempt KVC/driver startup, which may take several seconds on another PC.
+        Dispatcher.UIThread.Post(viewModel.StartMonitoring, DispatcherPriority.Background);
+
         if (Program.CapturePath is { } capturePath)
             _ = CaptureProofAsync(capturePath);
     }

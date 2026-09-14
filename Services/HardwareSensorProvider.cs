@@ -174,11 +174,6 @@ public sealed class KernelTemperatureProvider : IHardwareSensorProvider
     private DriverTelemetryResult? _previousTelemetry;
     private bool _hasReportedSensorRead;
 
-    public KernelTemperatureProvider()
-    {
-        EnsureHandle();
-    }
-
     public HardwareReading Read()
     {
         EnsureHandle();
