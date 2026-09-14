@@ -12,11 +12,11 @@
             <StackPanel Spacing="14" VerticalAlignment="Center">
               <StackPanel Spacing="5"><TextBlock Text="SYSTEM PULSE" Classes="eyebrow" FontSize="10" LetterSpacing="2.2"/><TextBlock Text="{Binding SystemStatus}" FontSize="25" FontWeight="SemiBold"/><TextBlock Text="{Binding SystemStatusDetail}" Classes="muted" FontSize="12"/></StackPanel>
               <Border Height="1" Background="{DynamicResource ThemeBorderBrush}"/>
-              <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
+              <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="10">
                 <StackPanel Spacing="3"><TextBlock Text="ACTIVITY" Classes="muted" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding CpuActivity}" FontSize="12" FontWeight="SemiBold"/></StackPanel>
                 <StackPanel Grid.Column="1" Spacing="3"><TextBlock Text="CPU TEMP" Classes="muted" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding CpuTemperature}" FontSize="12" FontWeight="SemiBold"/></StackPanel>
-                <StackPanel Grid.Column="2" Spacing="3"><TextBlock Text="LOGICAL CPU" Classes="muted" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding ThreadCount}" FontSize="12" FontWeight="SemiBold"/></StackPanel>
-                <StackPanel Grid.Column="3" Spacing="3"><TextBlock Text="PROCESSES" Classes="muted" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding ProcessCount}" FontSize="12" FontWeight="SemiBold"/></StackPanel>
+                <StackPanel Grid.Row="1" Spacing="3"><TextBlock Text="LOGICAL CPU" Classes="muted" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding ThreadCount}" FontSize="12" FontWeight="SemiBold"/></StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="1" Spacing="3"><TextBlock Text="PROCESSES" Classes="muted" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding ProcessCount}" FontSize="12" FontWeight="SemiBold"/></StackPanel>
               </Grid>
             </StackPanel>
             <Grid Grid.Column="1" Width="190" Height="190" HorizontalAlignment="Center" VerticalAlignment="Center"><controls:CoreLoadGauge Usage="{Binding Cpu}" Accent="{DynamicResource ThemeAccentBrush}" Track="{DynamicResource ThemeChartGridBrush}"/><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"><TextBlock Text="{Binding Cpu, StringFormat={}{0:0.0}%}" FontSize="36" FontWeight="SemiBold" HorizontalAlignment="Center"/><TextBlock Text="CPU LOAD" Classes="muted" FontSize="9" FontWeight="Bold" LetterSpacing="1.4" HorizontalAlignment="Center"/></StackPanel></Grid>
