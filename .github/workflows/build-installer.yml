@@ -11,6 +11,10 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.value }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -41,6 +45,64 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ExteraMonitor-v${{ steps.version.outputs.value }}-windows-x64
-          path: ${{ runner.temp }}\extera-monitor-artifacts\*
+          path: |
+            ${{ runner.temp }}\extera-monitor-artifacts\ExteraMonitor-Setup-v${{ steps.version.outputs.value }}-win-x64.exe
+            ${{ runner.temp }}\extera-monitor-artifacts\ExteraMonitor-v${{ steps.version.outputs.value }}-win-x64-portable.zip
+            ${{ runner.temp }}\extera-monitor-artifacts\SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
+
+  publish-latest-master:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: latest-master-release
+      cancel-in-progress: false
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: ExteraMonitor-v${{ needs.build.outputs.version }}-windows-x64
+          path: ${{ runner.temp }}\extera-monitor-artifacts
+
+      - name: Publish latest master prerelease
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          $releaseTag = 'latest-master'
+          $shortSha = $env:GITHUB_SHA.Substring(0, 7)
+          $title = "Latest master build v$env:VERSION ($shortSha)"
+          $notesPath = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+          @"
+          Automatically refreshed from the master branch.
+
+          Version: $env:VERSION
+          Commit: $env:GITHUB_SHA
+
+          Installer and portable ZIP include the required Driver runtime files.
+          "@ | Set-Content -LiteralPath $notesPath -Encoding utf8
+
+          $releaseTags = gh release list --repo $env:REPOSITORY --limit 100 --json tagName | ConvertFrom-Json | ForEach-Object { $_.tagName }
+          if ($LASTEXITCODE -ne 0) { throw 'Could not list GitHub Releases.' }
+
+          if ($releaseTags -contains $releaseTag) {
+            gh api --method PATCH "repos/$env:REPOSITORY/git/refs/tags/$releaseTag" -f sha="$env:GITHUB_SHA" -F force=true
+            if ($LASTEXITCODE -ne 0) { throw 'Could not move the latest-master tag.' }
+            gh release edit $releaseTag --repo $env:REPOSITORY --title $title --notes-file $notesPath --prerelease
+          } else {
+            gh release create $releaseTag --repo $env:REPOSITORY --target $env:GITHUB_SHA --title $title --notes-file $notesPath --prerelease --latest=false
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Could not create or update the latest-master release.' }
+
+          $artifactDirectory = Join-Path $env:RUNNER_TEMP 'extera-monitor-artifacts'
+          $installer = Join-Path $artifactDirectory "ExteraMonitor-Setup-v$env:VERSION-win-x64.exe"
+          $portable = Join-Path $artifactDirectory "ExteraMonitor-v$env:VERSION-win-x64-portable.zip"
+          $checksums = Join-Path $artifactDirectory 'SHA256SUMS.txt'
+          gh release upload $releaseTag $installer $portable $checksums --repo $env:REPOSITORY --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Could not upload release assets.' }
