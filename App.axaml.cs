@@ -26,7 +26,7 @@ public partial class App : Application
             if (captureUi)
             {
                 if (Program.CaptureDarkTheme) viewModel.Settings.ApplyPreviewTheme("Dark");
-                viewModel.ActiveSection = Program.CaptureSection;
+                viewModel.ActiveSection = Program.CaptureNavigationMotion ? "Overview" : Program.CaptureSection;
                 if (Program.CaptureNavigationHover)
                     viewModel.Navigation.First(item => item.Label == "CPU").IsHoverPreview = true;
                 if (Program.CaptureLoadingScreen) viewModel.HoldStartupOverlayForCapture();

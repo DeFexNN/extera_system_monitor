@@ -49,7 +49,12 @@ public partial class MainWindow : Window
         {
             while (DataContext is MainViewModel readyViewModel && readyViewModel.IsStartupVisible && DateTime.UtcNow < deadline)
                 await Task.Delay(250);
-            await Task.Delay(500);
+            if (Program.CaptureNavigationMotion && DataContext is MainViewModel motionViewModel)
+            {
+                await Dispatcher.UIThread.InvokeAsync(() => motionViewModel.ActiveSection = Program.CaptureSection);
+                await Task.Delay(110);
+            }
+            else await Task.Delay(500);
         }
 
         try

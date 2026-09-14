@@ -12,6 +12,7 @@ sealed class Program
     internal static bool CaptureNavigationHover { get; private set; }
     internal static bool CaptureLoadingScreen { get; private set; }
     internal static bool CaptureNormalWindow { get; private set; }
+    internal static bool CaptureNavigationMotion { get; private set; }
 
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
@@ -35,6 +36,7 @@ sealed class Program
             CaptureNavigationHover = args.Contains("--capture-nav-hover");
             CaptureLoadingScreen = args.Contains("--capture-loading");
             CaptureNormalWindow = args.Contains("--capture-normal");
+            CaptureNavigationMotion = args.Contains("--capture-nav-motion");
         }
 
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(CapturePath is null ? args : []);

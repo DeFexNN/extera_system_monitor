@@ -8,7 +8,7 @@ namespace ExteraMonitor.ViewModels;
 public sealed class MainViewModel : ViewModelBase
 {
     private readonly ISystemMetricsProvider _provider; private readonly IMetricsHistoryRepository _history; private readonly bool _persistUserData; private readonly DispatcherTimer _timer; private readonly Dictionary<string, ViewModelBase> _modules; private DateTime? _updated; private string _active = "Overview"; private bool _live = true; private ViewModelBase _activeModule = null!; private int _refreshInProgress;
-    private bool _isStartupVisible = true, _driverReady, _sensorsReady, _telemetryReady, _holdStartupOverlay, _finishingStartup;
+    private bool _isStartupVisible = true, _driverReady, _sensorsReady, _telemetryReady, _holdStartupOverlay, _finishingStartup, _isNavigationTransitionReversed;
     private int _readySamples;
     private double _startupOpacity = 1, _startupProgress = 8;
     private string _startupStatus = "STARTING KERNEL DRIVER", _startupDetail = "Connecting to ExteraMonitorDriver…";
@@ -16,11 +16,13 @@ public sealed class MainViewModel : ViewModelBase
     public ObservableCollection<NavigationItem> Navigation { get; } = new() { new("Overview", "⌂", true), new("CPU", "◒"), new("Memory", "▤"), new("Storage", "◫"), new("Network", "↗"), new("Processes", "≡"), new("Sensors", "°"), new("Driver", "⌁"), new("Settings", "⚙"), new("Overlay", "▣"), new("Software", "⊞") };
     public ViewModelBase ActiveModule { get => _activeModule; private set => SetProperty(ref _activeModule, value); }
     public string WorkstationName => $"{Environment.MachineName} / LOCAL";
-    public string ActiveSection { get => _active; set { if (SetProperty(ref _active, value)) { foreach (var item in Navigation) item.IsSelected = item.Label == value; ActiveModule = _modules[value]; } } }
+    public string ActiveSection { get => _active; set { if (_active == value || !_modules.ContainsKey(value)) return; var oldIndex = Navigation.ToList().FindIndex(item => item.Label == _active); var newIndex = Navigation.ToList().FindIndex(item => item.Label == value); IsNavigationTransitionReversed = newIndex < oldIndex; if (SetProperty(ref _active, value)) { foreach (var item in Navigation) item.IsSelected = item.Label == value; OnPropertyChanged(nameof(SelectedNavigationIndex)); ActiveModule = _modules[value]; } } }
     public bool IsLive { get => _live; set { if (SetProperty(ref _live, value)) { OnPropertyChanged(nameof(StatusLabel)); OnPropertyChanged(nameof(LiveActionLabel)); } } }
     public string StatusLabel => IsLive ? "LIVE SAMPLING" : "SAMPLING PAUSED";
     public string LiveActionLabel => IsLive ? "PAUSE" : "RESUME";
     public string LastUpdated => _updated is { } updated ? $"LAST SAMPLE {updated:HH:mm:ss}" : "WAITING FOR FIRST SAMPLE";
+    public int SelectedNavigationIndex => Math.Max(0, Navigation.ToList().FindIndex(item => item.IsSelected));
+    public bool IsNavigationTransitionReversed { get => _isNavigationTransitionReversed; private set => SetProperty(ref _isNavigationTransitionReversed, value); }
     public bool IsStartupVisible { get => _isStartupVisible; private set => SetProperty(ref _isStartupVisible, value); }
     public double StartupOpacity { get => _startupOpacity; private set => SetProperty(ref _startupOpacity, value); }
     public double StartupProgress { get => _startupProgress; private set => SetProperty(ref _startupProgress, value); }
