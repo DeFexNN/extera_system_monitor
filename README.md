@@ -188,3 +188,4 @@ Extera Monitor is a Windows systems-programming and telemetry project. The drive
 ---
 
 *"See the signal. Trust the source."*
+creds to: https://github.com/wesmar/kvc
