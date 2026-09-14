@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.2.4"
+  #define AppVersion "0.2.6"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\artifacts\stage\ExteraMonitor"

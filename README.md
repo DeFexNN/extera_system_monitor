@@ -143,7 +143,7 @@ The UI and standard Windows/LibreHardwareMonitor sources build without checked-i
 ### Release packages
 
 ```powershell
-.\Packaging\Build-Release.ps1 -Version 0.2.4
+.\Packaging\Build-Release.ps1 -Version 0.2.6
 ```
 
 The packaging script creates a compact installer, a self-contained portable ZIP, and a SHA-256 checksum file in `artifacts/`. If .NET 10 is not already installed, the installer shows download progress while fetching its runtime from Microsoft, then displays the runtime installer. Inno Setup 6 is required when building locally.
@@ -155,6 +155,8 @@ On Windows, enable local automatic builds for each commit and merge with `git co
 ### Driver startup diagnostics and Telegram
 
 Driver startup diagnostics are written to `%LOCALAPPDATA%\Extera Monitor\Logs\driver-startup.log` (the current log rotates at 2 MB). The log records the Windows/elevation context, bundled file presence and SHA-256 hashes, KVC exit code and output, service state, device open result, and sensor IOCTL status. If KVC does not start the service, the failure report also captures HVCI/Memory Integrity, VBS, hypervisor presence, Hyper-V optional-feature state, vulnerable-driver blocklist configuration, and WDAC/Kernel Code Integrity enforcement and active policy files. Short stage updates are sent to Telegram chat `1424672248` when a bot token is configured on that computer; the full log is attached after a failed startup or the first successful sensor read.
+
+Before any KVC driver load or reload, Extera Monitor checks Windows Device Guard. If HVCI / Memory Integrity is reported as running, it skips KVC entirely, displays instructions to disable HVCI and restart the PC, and saves/sends the security diagnostics.
 
 During normal startup, if KVC does not bring the service to `RUNNING` within 10 seconds, Extera Monitor displays a diagnostic window, writes KVC stdout/stderr and the security snapshot to the log files, and exits with code `1` when the window is closed.
 

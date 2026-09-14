@@ -19,6 +19,7 @@ public sealed class KernelDriverLoader : IDisposable
 
     public static event Action? DriverLoadFailed;
     public static string? LastFailureReport { get; private set; }
+    public static bool LastFailureWasHvciBlocked { get; private set; }
 
     public bool TryLoad() => TryLoad(automatic: false);
 
@@ -32,6 +33,8 @@ public sealed class KernelDriverLoader : IDisposable
             DriverDiagnostics.Write("platform", $"Driver loading is Windows-only; OS={Environment.OSVersion}.");
             return false;
         }
+
+        if (BlockLoadingForHvci("automatic load")) return false;
 
         var service = QueryService();
         if (service.IsRunning)
@@ -48,7 +51,7 @@ public sealed class KernelDriverLoader : IDisposable
 
         if (DateTimeOffset.UtcNow < _nextAutomaticRetryUtc) return false;
         _nextAutomaticRetryUtc = DateTimeOffset.UtcNow + LoadRetryInterval;
-        return TryLoad(automatic: true, previousService: service);
+        return TryLoad(automatic: true, previousService: service, hvciAlreadyChecked: true);
     }
 
     public bool TryReload(bool automatic = false)
@@ -59,6 +62,8 @@ public sealed class KernelDriverLoader : IDisposable
             DriverDiagnostics.Write("reload.platform", $"Reload unavailable; OS={Environment.OSVersion}.");
             return false;
         }
+
+        if (BlockLoadingForHvci(automatic ? "automatic reload" : "manual reload")) return false;
 
         if (automatic && DateTimeOffset.UtcNow < _nextAutomaticRetryUtc) return false;
         _nextAutomaticRetryUtc = DateTimeOffset.UtcNow + LoadRetryInterval;
@@ -108,10 +113,11 @@ public sealed class KernelDriverLoader : IDisposable
         _loaded = false;
     }
 
-    private bool TryLoad(bool automatic, ServiceQuery? previousService = null)
+    private bool TryLoad(bool automatic, ServiceQuery? previousService = null, bool hvciAlreadyChecked = false)
     {
         if (Volatile.Read(ref _fatalFailureSignalled) != 0) return false;
         if (!OperatingSystem.IsWindows()) return false;
+        if (!hvciAlreadyChecked && BlockLoadingForHvci(automatic ? "automatic load" : "manual load")) return false;
 
         LogEnvironment(automatic ? "load.automatic.begin" : "load.manual.begin");
         var service = previousService ?? QueryService();
@@ -136,6 +142,27 @@ public sealed class KernelDriverLoader : IDisposable
         _nextAutomaticRetryUtc = DateTimeOffset.UtcNow + LoadRetryInterval;
         ReportFinalState("load", command, after);
         return _loaded;
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private bool BlockLoadingForHvci(string action)
+    {
+        if (DriverSecurityDiagnostics.IsHvciRunning() != true) return false;
+        if (Interlocked.Exchange(ref _fatalFailureSignalled, 1) != 0) return true;
+
+        LastFailureWasHvciBlocked = true;
+        const string instruction = "HVCI / Memory Integrity is running. Disable HVCI / Memory Integrity and restart the PC before launching Extera Monitor again.";
+        DriverDiagnostics.Write("driver.load.skipped-hvci", $"action={action}; running=True; KVC was not invoked.", instruction, "driver-hvci-blocked");
+        var securityDiagnostics = DriverSecurityDiagnostics.Collect();
+        var failureReport = $"{instruction}{Environment.NewLine}Driver startup was skipped before KVC was run.{Environment.NewLine}{Environment.NewLine}" +
+            $"----- Windows security and virtualization diagnostics -----{Environment.NewLine}{securityDiagnostics}";
+        LastFailureReport = failureReport;
+        DriverDiagnostics.Write("driver.security.diagnostics", securityDiagnostics,
+            $"Windows security and virtualization diagnostics:{Environment.NewLine}{securityDiagnostics}", "driver-security-diagnostics");
+        DriverDiagnostics.SaveAndQueueArtifact("driver-hvci-blocked.txt", "Driver load skipped because HVCI / Memory Integrity is running.", failureReport);
+        DriverDiagnostics.QueueLogUpload();
+        DriverLoadFailed?.Invoke();
+        return true;
     }
 
     private (bool Ready, string KvcPath, string DriverPath) CheckRuntimeFiles()

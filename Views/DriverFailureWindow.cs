@@ -11,7 +11,8 @@ internal sealed class DriverFailureWindow : Window
 {
     public DriverFailureWindow()
     {
-        Title = "Extera Monitor — driver startup failed";
+        var hvciBlocked = KernelDriverLoader.LastFailureWasHvciBlocked;
+        Title = hvciBlocked ? "Extera Monitor — HVCI blocks driver loading" : "Extera Monitor — driver startup failed";
         Width = 820;
         Height = 660;
         MinWidth = 620;
@@ -35,14 +36,16 @@ internal sealed class DriverFailureWindow : Window
         var heading = new StackPanel { Spacing = 8 };
         heading.Children.Add(new TextBlock
         {
-            Text = "Driver could not start",
+            Text = hvciBlocked ? "HVCI / Memory Integrity is active" : "Driver could not start",
             FontSize = 25,
             FontWeight = FontWeight.Bold,
             Foreground = Brush("#F4F7F7")
         });
         heading.Children.Add(new TextBlock
         {
-            Text = "The monitor opened, but Windows did not start its kernel driver. Share this report with the developer; the same details are saved in the logs folder.",
+            Text = hvciBlocked
+                ? "Driver loading was skipped; KVC was not started. Disable HVCI / Memory Integrity and restart the PC before launching Extera Monitor again."
+                : "The monitor opened, but Windows did not start its kernel driver. Share this report with the developer; the same details are saved in the logs folder.",
             FontSize = 13,
             TextWrapping = TextWrapping.Wrap,
             Foreground = Brush("#BAC7C7")

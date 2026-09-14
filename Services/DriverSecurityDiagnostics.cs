@@ -30,6 +30,12 @@ internal static class DriverSecurityDiagnostics
         return string.Join(Environment.NewLine, lines);
     }
 
+    public static bool? IsHvciRunning()
+    {
+        if (!OperatingSystem.IsWindows()) return null;
+        return HasCode(ReadDeviceGuard().RunningServices, 2);
+    }
+
     private static readonly Dictionary<uint, string> EnforcementNames = new()
     {
         [0] = "Off",
