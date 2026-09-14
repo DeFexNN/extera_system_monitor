@@ -105,5 +105,17 @@ jobs:
           $installer = Join-Path $artifactDirectory "ExteraMonitor-Setup-v$env:VERSION-win-x64.exe"
           $portable = Join-Path $artifactDirectory "ExteraMonitor-v$env:VERSION-win-x64-portable.zip"
           $checksums = Join-Path $artifactDirectory 'SHA256SUMS.txt'
+          $currentAssets = @([IO.Path]::GetFileName($installer), [IO.Path]::GetFileName($portable), [IO.Path]::GetFileName($checksums))
+          $existingRelease = gh release view $releaseTag --repo $env:REPOSITORY --json assets | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Could not list assets on latest-master.' }
+          foreach ($asset in $existingRelease.assets) {
+            $isOldPackage = ($asset.name -match '^ExteraMonitor-Setup-v.*-win-x64\.exe$' -or
+              $asset.name -match '^ExteraMonitor-v.*-win-x64-portable\.zip$' -or
+              $asset.name -eq 'SHA256SUMS.txt')
+            if ($isOldPackage -and $currentAssets -notcontains $asset.name) {
+              gh release delete-asset $releaseTag $asset.name --repo $env:REPOSITORY --yes
+              if ($LASTEXITCODE -ne 0) { throw "Could not remove stale release asset $($asset.name)." }
+            }
+          }
           gh release upload $releaseTag $installer $portable $checksums --repo $env:REPOSITORY --clobber
           if ($LASTEXITCODE -ne 0) { throw 'Could not upload release assets.' }
