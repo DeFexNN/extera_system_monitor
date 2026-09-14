@@ -146,9 +146,9 @@ The UI and standard Windows/LibreHardwareMonitor sources build without checked-i
 .\Packaging\Build-Release.ps1 -Version 0.2.1
 ```
 
-The packaging script creates a self-contained installer, portable ZIP, and SHA-256 checksum file in `artifacts/`. Inno Setup 6 is required when building the installer locally.
+The packaging script creates a compact installer, a self-contained portable ZIP, and a SHA-256 checksum file in `artifacts/`. If .NET 10 is not already installed, the installer downloads its runtime from Microsoft during setup. Inno Setup 6 is required when building locally.
 
-Every push and pull request also runs the [**Build Windows installer** workflow](https://github.com/DeFexNN/extera_system_monitor/actions/workflows/build-installer.yml). Download its installer, portable ZIP, and checksums from the workflow run's **Artifacts** section. Each push to `master` also updates the [latest master prerelease](https://github.com/DeFexNN/extera_system_monitor/releases/tag/latest-master). The required driver runtime files are committed in `Driver/`; the app executable stays single-file, while the installer and portable ZIP place `kvc.exe`, `kvc.dat`, and `ExteraMonitorDriver.sys` together in the installed `Driver/` folder so the loader can access them.
+Every push and pull request also runs the [**Build Windows installer** workflow](https://github.com/DeFexNN/extera_system_monitor/actions/workflows/build-installer.yml). Download its installer, portable ZIP, and checksums from the workflow run's **Artifacts** section. Each push to `master` also updates the [latest master prerelease](https://github.com/DeFexNN/extera_system_monitor/releases/tag/latest-master). The installer is compact and downloads the Microsoft .NET 10 runtime during setup only when it is missing; an internet connection is needed in that case. The portable ZIP stays self-contained and works offline. Both packages include `kvc.exe`, `kvc.dat`, and `ExteraMonitorDriver.sys` together in the `Driver/` folder so the loader can access them.
 
 On Windows, enable local automatic builds for each commit and merge with `git config core.hooksPath .githooks`. The hooks run the same release script and place the installer, portable ZIP, and checksums in `artifacts/`.
 

@@ -18,7 +18,8 @@ $artifactsDir = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
 } else {
     [IO.Path]::GetFullPath($OutputDirectory)
 }
-$stageDir = Join-Path $artifactsDir "stage\ExteraMonitor"
+$installerStageDir = Join-Path $artifactsDir "stage\Installer"
+$portableStageDir = Join-Path $artifactsDir "stage\Portable\ExteraMonitor"
 $portableName = "ExteraMonitor-v$Version-win-x64-portable"
 $portableDir = Join-Path $artifactsDir $portableName
 $portableZip = Join-Path $artifactsDir "$portableName.zip"
@@ -44,7 +45,7 @@ foreach ($required in @($innoCompiler)) {
 }
 
 foreach ($oldArtifact in @(
-    $stageDir,
+    (Join-Path $artifactsDir "stage"),
     $portableDir,
     $portableZip,
     (Join-Path $artifactsDir "ExteraMonitor-Setup-v$Version-win-x64.exe"),
@@ -54,22 +55,31 @@ foreach ($oldArtifact in @(
         Remove-Item -LiteralPath $oldArtifact -Recurse -Force
     }
 }
-New-Item -ItemType Directory -Path $stageDir -Force | Out-Null
+New-Item -ItemType Directory -Path $installerStageDir, $portableStageDir -Force | Out-Null
 
 dotnet publish (Join-Path $projectRoot "ExteraMonitor.csproj") `
     -c Release -r win-x64 --self-contained true `
     -p:Version=$Version -p:PublishSingleFile=true `
     -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true `
     -p:DebugType=None -p:DebugSymbols=false `
-    -o $stageDir
-if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE" }
-Get-ChildItem -LiteralPath $stageDir -Filter *.pdb -File -Recurse | Remove-Item -Force
+    -o $portableStageDir
+if ($LASTEXITCODE -ne 0) { throw "Self-contained portable publish failed with exit code $LASTEXITCODE" }
+Get-ChildItem -LiteralPath $portableStageDir -Filter *.pdb -File -Recurse | Remove-Item -Force
 
-Copy-Item -LiteralPath $stageDir -Destination $portableDir -Recurse
+dotnet publish (Join-Path $projectRoot "ExteraMonitor.csproj") `
+    -c Release -r win-x64 --no-self-contained `
+    -p:Version=$Version -p:PublishSingleFile=true `
+    -p:IncludeNativeLibrariesForSelfExtract=true `
+    -p:DebugType=None -p:DebugSymbols=false `
+    -o $installerStageDir
+if ($LASTEXITCODE -ne 0) { throw "Framework-dependent installer publish failed with exit code $LASTEXITCODE" }
+Get-ChildItem -LiteralPath $installerStageDir -Filter *.pdb -File -Recurse | Remove-Item -Force
+
+Copy-Item -LiteralPath $portableStageDir -Destination $portableDir -Recurse
 Copy-Item -LiteralPath (Join-Path $projectRoot "README.md") -Destination (Join-Path $portableDir "README.md")
 Compress-Archive -Path $portableDir -DestinationPath $portableZip -CompressionLevel Optimal
 
-& $innoCompiler "/DAppVersion=$Version" "/DSourceDir=$stageDir" "/DOutputDir=$artifactsDir" (Join-Path $PSScriptRoot "ExteraMonitor.iss")
+& $innoCompiler "/DAppVersion=$Version" "/DSourceDir=$installerStageDir" "/DOutputDir=$artifactsDir" (Join-Path $PSScriptRoot "ExteraMonitor.iss")
 if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
 
 $installer = Join-Path $artifactsDir "ExteraMonitor-Setup-v$Version-win-x64.exe"

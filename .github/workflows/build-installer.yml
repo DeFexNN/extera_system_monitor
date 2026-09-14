@@ -85,7 +85,8 @@ jobs:
           Version: $env:VERSION
           Commit: $env:GITHUB_SHA
 
-          Installer and portable ZIP include the required Driver runtime files.
+          The compact installer downloads Microsoft's .NET 10 runtime only when missing. The portable ZIP remains self-contained.
+          Both packages include the required Driver runtime files.
           "@ | Set-Content -LiteralPath $notesPath -Encoding utf8
 
           $releaseTags = gh release list --repo $env:REPOSITORY --limit 100 --json tagName | ConvertFrom-Json | ForEach-Object { $_.tagName }

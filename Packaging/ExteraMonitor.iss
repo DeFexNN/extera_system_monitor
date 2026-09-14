@@ -55,3 +55,59 @@ Name: "{autodesktop}\Extera Monitor"; Filename: "{app}\ExteraMonitor.exe"; Worki
 
 [Run]
 Filename: "{app}\ExteraMonitor.exe"; Description: "{cm:LaunchProgram,Extera Monitor}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+function HasNet10Runtime: Boolean;
+var
+  SearchRec: TFindRec;
+  RuntimePath: String;
+begin
+  Result := False;
+  if FindFirst(ExpandConstant('{commonpf64}\dotnet\shared\Microsoft.NETCore.App\10.*'), SearchRec) then
+  begin
+    try
+      repeat
+        if (SearchRec.Attributes and FILE_ATTRIBUTE_DIRECTORY <> 0) and
+           (SearchRec.Name <> '.') and (SearchRec.Name <> '..') and
+           (Pos('-', SearchRec.Name) = 0) then
+        begin
+          RuntimePath := ExpandConstant('{commonpf64}\dotnet\shared\Microsoft.NETCore.App\') + SearchRec.Name;
+          if FileExists(RuntimePath + '\coreclr.dll') then
+          begin
+            Result := True;
+            Exit;
+          end;
+        end;
+      until not FindNext(SearchRec);
+    finally
+      FindClose(SearchRec);
+    end;
+  end;
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  RuntimeInstaller: String;
+  ResultCode: Integer;
+begin
+  Result := '';
+  if HasNet10Runtime then
+    Exit;
+
+  RuntimeInstaller := ExpandConstant('{tmp}\dotnet-runtime-10-x64.exe');
+  try
+    DownloadTemporaryFile('https://aka.ms/dotnet/10.0/dotnet-runtime-win-x64.exe', 'dotnet-runtime-10-x64.exe', '', nil);
+  except
+    Result := 'The .NET 10 runtime is missing and could not be downloaded. Check your internet connection, then run Setup again.';
+    Exit;
+  end;
+
+  if not Exec(RuntimeInstaller, '/install /quiet /norestart', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  begin
+    Result := 'The .NET 10 runtime installer could not be started. Run Setup again as an administrator.';
+    Exit;
+  end;
+
+  if (ResultCode <> 0) and (ResultCode <> 3010) then
+    Result := Format('.NET 10 runtime installation failed with exit code %d.', [ResultCode]);
+end;
