@@ -1,5 +1,6 @@
 using Avalonia;
 using System;
+using ExteraMonitor.Services;
 
 namespace ExteraMonitor;
 
@@ -20,6 +21,12 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        if (args.Contains("--driver-self-test"))
+        {
+            RunDriverSelfTest();
+            return;
+        }
+
         var captureIndex = Array.IndexOf(args, "--capture");
         if (captureIndex < 0) captureIndex = Array.IndexOf(args, "--capture-cpu");
         if (captureIndex >= 0)
@@ -51,4 +58,42 @@ sealed class Program
 #endif
             .WithInterFont()
             .LogToTrace();
+
+    private static void RunDriverSelfTest()
+    {
+        try
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                Console.Error.WriteLine("Driver self-test is available on Windows only.");
+                Environment.ExitCode = 2;
+                return;
+            }
+
+            using var provider = new KernelTemperatureProvider();
+            var reading = provider.Read();
+            var temperature = reading.Sensors.FirstOrDefault(sensor =>
+                sensor.Type.Equals("Temperature", StringComparison.OrdinalIgnoreCase) &&
+                sensor.Name.Contains("Tctl", StringComparison.OrdinalIgnoreCase));
+
+            Console.WriteLine($"Source: {reading.TemperatureSource}");
+            if (temperature is null)
+            {
+                Console.Error.WriteLine("Driver self-test failed: no CPU package temperature was returned.");
+                Environment.ExitCode = 2;
+                return;
+            }
+
+            Console.WriteLine($"CPU package temperature: {temperature.Value:0.0} {temperature.Unit.Replace("°", string.Empty, StringComparison.Ordinal)}");
+            Console.WriteLine($"Driver diagnostic log: {DriverDiagnosticsPath()}");
+            Environment.ExitCode = 0;
+        }
+        finally
+        {
+            DriverDiagnostics.FlushTelegram();
+        }
+    }
+
+    private static string DriverDiagnosticsPath() =>
+        System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Extera Monitor", "Logs", "driver-startup.log");
 }

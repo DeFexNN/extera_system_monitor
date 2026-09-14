@@ -2,9 +2,12 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using ExteraMonitor.ViewModels;
 using ExteraMonitor.Views;
 using ExteraMonitor.Services;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ExteraMonitor;
 
@@ -13,6 +16,7 @@ public partial class App : Application
     private MainWindow? _mainWindow;
     private MainViewModel? _mainViewModel;
     private IClassicDesktopStyleApplicationLifetime? _desktop;
+    private int _driverFailureShutdownQueued;
 
     public override void Initialize()
     {
@@ -24,6 +28,7 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             _desktop = desktop;
+            KernelDriverLoader.DriverLoadFailed += OnDriverLoadFailed;
             var captureUi = Program.CapturePath is not null;
             var viewModel = captureUi
                 ? new MainViewModel(SystemMetricsProviderFactory.Create(), new SqliteMetricsHistoryRepository(readOnly: true), persistUserData: false)
@@ -55,6 +60,17 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private void OnDriverLoadFailed()
+    {
+        if (Interlocked.Exchange(ref _driverFailureShutdownQueued, 1) != 0) return;
+        KernelDriverLoader.DriverLoadFailed -= OnDriverLoadFailed;
+        _ = Task.Run(() =>
+        {
+            DriverDiagnostics.FlushTelegram(TimeSpan.FromSeconds(20));
+            Dispatcher.UIThread.Post(() => _desktop?.Shutdown(1));
+        });
     }
 
     private void TrayIcon_Clicked(object? sender, EventArgs e) => ShowMainWindow();

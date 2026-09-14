@@ -172,6 +172,7 @@ public sealed class KernelTemperatureProvider : IHardwareSensorProvider
     private readonly KernelDriverLoader _driverLoader = new();
     private IntPtr _handle = InvalidHandle;
     private DriverTelemetryResult? _previousTelemetry;
+    private bool _hasReportedSensorRead;
 
     public KernelTemperatureProvider()
     {
@@ -184,10 +185,16 @@ public sealed class KernelTemperatureProvider : IHardwareSensorProvider
         if (!TryReadTelemetry(out var reading) && !TryRead(out reading))
         {
             CloseCurrentHandle();
-            _driverLoader.TryReload();
+            _driverLoader.TryReload(automatic: true);
             EnsureHandle();
             if (!TryReadTelemetry(out reading) && !TryRead(out reading))
+            {
+                DriverDiagnostics.WriteRateLimited("sensor.read.failed",
+                    "Could not read CPU temperature after retrying driver startup/device access.", TimeSpan.FromMinutes(1),
+                    "Driver startup or sensor read failed after retry. Full driver-startup.log is attached to this chat.", "driver-sensor-failure");
+                DriverDiagnostics.QueueLogUpload();
                 return new HardwareReading(0, Array.Empty<HardwareSensorMetric>(), "Ryzen temperature driver unavailable");
+            }
         }
 
         return reading;
@@ -204,6 +211,16 @@ public sealed class KernelTemperatureProvider : IHardwareSensorProvider
         if (!OperatingSystem.IsWindows() || (_handle != InvalidHandle && _handle != IntPtr.Zero)) return;
         if (!_driverLoader.EnsureLoaded()) return;
         _handle = CreateFileW("\\\\.\\ExteraMonitorDriver", GenericRead, 0, IntPtr.Zero, OpenExisting, 0, IntPtr.Zero);
+        if (_handle == InvalidHandle || _handle == IntPtr.Zero)
+        {
+            var error = Marshal.GetLastWin32Error();
+            DriverDiagnostics.WriteRateLimited("device.open.failed",
+                $"CreateFileW(\\\\.\\ExteraMonitorDriver) failed; win32={error}; message={new System.ComponentModel.Win32Exception(error).Message}.",
+                TimeSpan.FromMinutes(1), "Driver service is running, but opening its device failed (Win32 " + error + "). See local driver log.", "driver-device-open-failed");
+            return;
+        }
+        DriverDiagnostics.WriteOnce("device.open.success", "Opened device \\\\.\\ExteraMonitorDriver successfully.",
+            "Driver device opened successfully; querying sensors now.", "driver-device-open");
     }
 
     private bool TryRead(out HardwareReading reading)
@@ -216,14 +233,28 @@ public sealed class KernelTemperatureProvider : IHardwareSensorProvider
 
         var output = new TemperatureResult();
         var size = Marshal.SizeOf<TemperatureResult>();
-        if (!DeviceIoControl(_handle, IoctlGetTemperature, IntPtr.Zero, 0, ref output, size, out var returned, IntPtr.Zero) || returned < size || output.DriverStatus != 0)
+        var success = DeviceIoControl(_handle, IoctlGetTemperature, IntPtr.Zero, 0, ref output, size, out var returned, IntPtr.Zero);
+        var error = success ? 0 : Marshal.GetLastWin32Error();
+        if (!success || returned < size || output.DriverStatus != 0)
         {
+            DriverDiagnostics.WriteRateLimited("ioctl.temperature.failed",
+                $"Temperature IOCTL failed; win32={error}; returned={returned}/{size}; driverStatus={output.DriverStatus}.",
+                TimeSpan.FromMinutes(1), "Driver device opened, but its temperature request failed. See local driver log.", "driver-ioctl-failed");
             reading = new HardwareReading(0, Array.Empty<HardwareSensorMetric>(), "Ryzen temperature driver returned no reading");
             return false;
         }
 
         var celsius = output.CelsiusMilli / 1000d;
+        if (celsius is < -40 or > 150)
+        {
+            DriverDiagnostics.WriteRateLimited("sensor.temperature.out-of-range",
+                $"Temperature IOCTL returned an implausible value; milliCelsius={output.CelsiusMilli}.", TimeSpan.FromMinutes(1));
+            reading = new HardwareReading(0, Array.Empty<HardwareSensorMetric>(), "Ryzen temperature driver returned an invalid reading");
+            return false;
+        }
+
         var metric = new HardwareSensorMetric("AMD Ryzen 5 7500F", "Tctl/Tdie", "Temperature", celsius, "°C");
+        ReportSensorReadOnce("temperature IOCTL", celsius);
         reading = new HardwareReading(celsius, new[] { metric }, "ExteraMonitorDriver kernel driver");
         return true;
     }
@@ -239,14 +270,27 @@ public sealed class KernelTemperatureProvider : IHardwareSensorProvider
             Cores = Enumerable.Range(0, 64).Select(_ => new DriverCoreTelemetry()).ToArray()
         };
         var size = Marshal.SizeOf<DriverTelemetryResult>();
-        if (!DeviceIoControlTelemetry(_handle, IoctlGetTelemetry, IntPtr.Zero, 0, ref output, size, out var returned, IntPtr.Zero) || returned < size || output.DriverStatus != 0)
+        var success = DeviceIoControlTelemetry(_handle, IoctlGetTelemetry, IntPtr.Zero, 0, ref output, size, out var returned, IntPtr.Zero);
+        var error = success ? 0 : Marshal.GetLastWin32Error();
+        if (!success || returned < size || output.DriverStatus != 0)
+        {
+            DriverDiagnostics.WriteOnce("ioctl.telemetry.unsupported",
+                $"Telemetry IOCTL unavailable; win32={error}; returned={returned}/{size}; driverStatus={output.DriverStatus}. Legacy temperature IOCTL will be tried.",
+                $"Extended telemetry request unavailable (Win32 {error}, returned {returned}/{size}, driver status {output.DriverStatus}); testing legacy temperature request.",
+                "driver-telemetry-unsupported");
             return false;
+        }
 
         const string hardware = "ExteraMonitorDriver / AMD Family 19h";
         var sensors = new List<HardwareSensorMetric>();
         var packageTemperature = output.CelsiusMilli / 1000d;
-        if (packageTemperature is > -40 and < 150)
-            sensors.Add(new HardwareSensorMetric(hardware, "Tctl/Tdie", "Temperature", packageTemperature, "°C"));
+        if (packageTemperature is < -40 or > 150)
+        {
+            DriverDiagnostics.WriteRateLimited("sensor.telemetry.temperature.invalid",
+                $"Telemetry IOCTL returned invalid package temperature; milliCelsius={output.CelsiusMilli}.", TimeSpan.FromMinutes(1));
+            return false;
+        }
+        sensors.Add(new HardwareSensorMetric(hardware, "Tctl/Tdie", "Temperature", packageTemperature, "°C"));
 
         var ccdCount = Math.Min(output.CcdCount, (uint)output.CcdCelsiusMilli.Length);
         for (var index = 0; index < ccdCount; index++)
@@ -304,7 +348,17 @@ public sealed class KernelTemperatureProvider : IHardwareSensorProvider
 
         _previousTelemetry = output;
         reading = new HardwareReading(packageTemperature, sensors, "ExteraMonitorDriver kernel telemetry");
+        ReportSensorReadOnce("telemetry IOCTL", packageTemperature);
         return true;
+    }
+
+    private void ReportSensorReadOnce(string source, double celsius)
+    {
+        if (_hasReportedSensorRead) return;
+        _hasReportedSensorRead = true;
+        DriverDiagnostics.Write("sensor.read.success", $"First hardware sensor response succeeded via {source}; CPU package={celsius:0.0} °C.",
+            $"Driver loaded and sensor reads are working. CPU package: {celsius:0.0} °C.", "driver-sensor-ready");
+        DriverDiagnostics.QueueLogUpload();
     }
 
     private void CloseCurrentHandle()

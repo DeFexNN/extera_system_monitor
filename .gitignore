@@ -2,6 +2,9 @@ bin/
 obj/
 build-verify/
 artifacts/
+.env
+.env.*
+!.env.example
 obj-verify/
 TempProbe/bin/
 TempProbe/obj/

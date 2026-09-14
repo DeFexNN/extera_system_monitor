@@ -17,6 +17,8 @@ AppPublisherURL=https://github.com/DeFexNN/extera_system_monitor
 AppSupportURL=https://github.com/DeFexNN/extera_system_monitor/issues
 AppUpdatesURL=https://github.com/DeFexNN/extera_system_monitor/releases
 DefaultDirName={autopf}\Extera Monitor
+UsePreviousAppDir=yes
+DirExistsWarning=no
 DefaultGroupName=Extera Monitor
 DisableProgramGroupPage=yes
 OutputDir={#OutputDir}
@@ -59,6 +61,8 @@ ukrainian.NetRuntimeStartFailed=Не вдалося запустити інст�
 ukrainian.NetRuntimeInstallFailed=Не вдалося встановити .NET 10 Runtime. Код завершення: %d.
 ukrainian.NetRuntimeBusyRetry=Windows уже встановлює або оновлює іншу програму. Дочекайся завершення, потім натисни «Повторити», щоб знову відкрити інсталятор .NET.
 ukrainian.NetRuntimeStillMissing=Середовище .NET 10 досі не встановлено. Повтори завантаження та встановлення.
+english.DriverUpgradeFailed=Could not stop and remove the running Extera Monitor driver. Close Extera Monitor and try again; if it still fails, restart Windows and rerun setup.
+ukrainian.DriverUpgradeFailed=Не вдалося зупинити й видалити активний драйвер Extera Monitor. Закрий Extera Monitor і повтори спробу; якщо помилка лишиться, перезавантаж Windows та запусти інсталятор знову.
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
@@ -174,8 +178,27 @@ begin
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ResultCode: Integer;
+  PowerShellCommand: String;
 begin
   Result := '';
   if not HasNet10Runtime then
+  begin
     Result := CustomMessage('NetRuntimeStillMissing');
+    Exit;
+  end;
+
+  { The monitor intentionally leaves its kernel service loaded after closing.
+    Stop and remove it before replacing the bundled .sys file during an update. }
+  PowerShellCommand := '$ErrorActionPreference=''Stop''; ' +
+    '$s=Get-Service -Name ''ExteraMonitorDriver'' -ErrorAction SilentlyContinue; ' +
+    'if($s){ if($s.Status -ne ''Stopped''){ Stop-Service -InputObject $s -Force; ' +
+    '$s.WaitForStatus(''Stopped'',[TimeSpan]::FromSeconds(20)) }; ' +
+    '& sc.exe delete ExteraMonitorDriver | Out-Null; ' +
+    'if($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 1060){ exit $LASTEXITCODE } }; exit 0';
+  if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+      '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "' + PowerShellCommand + '"',
+      '', SW_HIDE, ewWaitUntilTerminated, ResultCode) or (ResultCode <> 0) then
+    Result := CustomMessage('DriverUpgradeFailed');
 end;

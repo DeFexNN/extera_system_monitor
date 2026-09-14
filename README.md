@@ -152,6 +152,20 @@ Every push and pull request also runs the [**Build Windows installer** workflow]
 
 On Windows, enable local automatic builds for each commit and merge with `git config core.hooksPath .githooks`. The hooks run the same release script and place the installer, portable ZIP, and checksums in `artifacts/`.
 
+### Driver startup diagnostics and Telegram
+
+Driver startup diagnostics are written to `%LOCALAPPDATA%\Extera Monitor\Logs\driver-startup.log` (the current log rotates at 2 MB). The log records the Windows/elevation context, bundled file presence and SHA-256 hashes, KVC exit code and output, service state, device open result, and sensor IOCTL status. Short stage updates are sent live to Telegram chat `1424672248`; the full log is attached after a failed startup or the first successful sensor read.
+
+Run `ExteraMonitor.exe --driver-self-test` from an elevated terminal to perform a headless driver/device/sensor check. It exits with code `0` after receiving a CPU package temperature and `2` if the check fails; it does not stop a running driver. During normal startup, if KVC does not bring the service to `RUNNING` within 10 seconds, Extera Monitor sends `driver load failed`, attaches a separate KVC stdout/stderr file and the driver log, then closes with exit code `1`.
+
+To enable Telegram updates, create a bot with Telegram's `@BotFather` and send `/start` in its private chat. For local development, `.env` may contain either a raw token on its own line or `EXTERA_TELEGRAM_BOT_TOKEN=<token>`; `.env` is ignored by Git. Installed copies should use the Windows user environment and be restarted afterward:
+
+```powershell
+[Environment]::SetEnvironmentVariable('EXTERA_TELEGRAM_BOT_TOKEN', '<your-bot-token>', 'User')
+```
+
+The app sends driver status updates directly to Telegram while it is running; it does not need a separate publicly hosted bot server. Keep the token private and never commit it to the repository. Remove the variable to disable Telegram notifications.
+
 ---
 
 ## Visual Verification
