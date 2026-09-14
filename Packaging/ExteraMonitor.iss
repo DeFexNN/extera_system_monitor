@@ -42,6 +42,22 @@ VersionInfoProductVersion={#AppVersion}
 Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "ukrainian"; MessagesFile: "compiler:Languages\Ukrainian.isl"
 
+[CustomMessages]
+english.NetRuntimePageCaption=Downloading .NET 10 runtime
+english.NetRuntimePageDescription=Extera Monitor needs the .NET 10 runtime. Setup downloads it from Microsoft only if it is missing.
+english.NetRuntimeDownloadCancelled=The .NET runtime download was cancelled.
+english.NetRuntimeDownloadFailed=Could not download the .NET runtime: %s
+english.NetRuntimeStartFailed=The .NET runtime installer could not be started.
+english.NetRuntimeInstallFailed=.NET 10 runtime installation failed with exit code %d.
+english.NetRuntimeStillMissing=The .NET 10 runtime is still missing. Retry the download and install step.
+ukrainian.NetRuntimePageCaption=Завантаження .NET 10 Runtime
+ukrainian.NetRuntimePageDescription=Extera Monitor потребує .NET 10 Runtime. Інсталятор завантажить його з Microsoft, якщо середовища ще немає.
+ukrainian.NetRuntimeDownloadCancelled=Завантаження .NET Runtime скасовано.
+ukrainian.NetRuntimeDownloadFailed=Не вдалося завантажити .NET Runtime: %s
+ukrainian.NetRuntimeStartFailed=Не вдалося запустити інсталятор .NET Runtime.
+ukrainian.NetRuntimeInstallFailed=Не вдалося встановити .NET 10 Runtime. Код завершення: %d.
+ukrainian.NetRuntimeStillMissing=Середовище .NET 10 досі не встановлено. Повтори завантаження та встановлення.
+
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
@@ -57,6 +73,15 @@ Name: "{autodesktop}\Extera Monitor"; Filename: "{app}\ExteraMonitor.exe"; Worki
 Filename: "{app}\ExteraMonitor.exe"; Description: "{cm:LaunchProgram,Extera Monitor}"; Flags: nowait postinstall skipifsilent
 
 [Code]
+var
+  RuntimeDownloadPage: TDownloadWizardPage;
+
+procedure InitializeWizard;
+begin
+  RuntimeDownloadPage := CreateDownloadPage(CustomMessage('NetRuntimePageCaption'), CustomMessage('NetRuntimePageDescription'), nil);
+  RuntimeDownloadPage.ShowBaseNameInsteadOfUrl := True;
+end;
+
 function HasNet10Runtime: Boolean;
 var
   SearchRec: TFindRec;
@@ -85,29 +110,54 @@ begin
   end;
 end;
 
-function PrepareToInstall(var NeedsRestart: Boolean): String;
+function NextButtonClick(CurPageID: Integer): Boolean;
 var
-  RuntimeInstaller: String;
+  ErrorMessage: String;
   ResultCode: Integer;
 begin
-  Result := '';
-  if HasNet10Runtime then
+  Result := True;
+  if (CurPageID <> wpReady) or HasNet10Runtime then
     Exit;
 
-  RuntimeInstaller := ExpandConstant('{tmp}\dotnet-runtime-10-x64.exe');
+  RuntimeDownloadPage.Clear;
+  RuntimeDownloadPage.Add('https://aka.ms/dotnet/10.0/dotnet-runtime-win-x64.exe', 'dotnet-runtime-10-x64.exe', '');
+  RuntimeDownloadPage.Show;
   try
-    DownloadTemporaryFile('https://aka.ms/dotnet/10.0/dotnet-runtime-win-x64.exe', 'dotnet-runtime-10-x64.exe', '', nil);
-  except
-    Result := 'The .NET 10 runtime is missing and could not be downloaded. Check your internet connection, then run Setup again.';
-    Exit;
+    try
+      RuntimeDownloadPage.Download;
+    except
+      if RuntimeDownloadPage.AbortedByUser then
+        ErrorMessage := CustomMessage('NetRuntimeDownloadCancelled')
+      else
+        ErrorMessage := Format(CustomMessage('NetRuntimeDownloadFailed'), [GetExceptionMessage]);
+      SuppressibleMsgBox(AddPeriod(ErrorMessage), mbCriticalError, MB_OK, IDOK);
+      Result := False;
+      Exit;
+    end;
+  finally
+    RuntimeDownloadPage.Hide;
   end;
 
-  if not Exec(RuntimeInstaller, '/install /quiet /norestart', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  if not Result then
+    Exit;
+
+  if not Exec(ExpandConstant('{tmp}\dotnet-runtime-10-x64.exe'), '/install /passive /norestart', '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then
   begin
-    Result := 'The .NET 10 runtime installer could not be started. Run Setup again as an administrator.';
+    SuppressibleMsgBox(CustomMessage('NetRuntimeStartFailed'), mbCriticalError, MB_OK, IDOK);
+    Result := False;
     Exit;
   end;
 
-  if (ResultCode <> 0) and (ResultCode <> 3010) then
-    Result := Format('.NET 10 runtime installation failed with exit code %d.', [ResultCode]);
+  if (ResultCode <> 0) and (ResultCode <> 3010) and not HasNet10Runtime then
+  begin
+    SuppressibleMsgBox(Format(CustomMessage('NetRuntimeInstallFailed'), [ResultCode]), mbCriticalError, MB_OK, IDOK);
+    Result := False;
+  end;
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := '';
+  if not HasNet10Runtime then
+    Result := CustomMessage('NetRuntimeStillMissing');
 end;

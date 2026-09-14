@@ -85,7 +85,7 @@ jobs:
           Version: $env:VERSION
           Commit: $env:GITHUB_SHA
 
-          The compact installer downloads Microsoft's .NET 10 runtime only when missing. The portable ZIP remains self-contained.
+          The compact installer shows download progress for Microsoft's .NET 10 runtime when missing. The portable ZIP remains self-contained.
           Both packages include the required Driver runtime files.
           "@ | Set-Content -LiteralPath $notesPath -Encoding utf8
 
