@@ -143,7 +143,7 @@ The UI and standard Windows/LibreHardwareMonitor sources build without checked-i
 ### Release packages
 
 ```powershell
-.\Packaging\Build-Release.ps1 -Version 0.2.6
+.\Packaging\Build-Release.ps1 -Version 0.2.7
 ```
 
 The packaging script creates a compact installer, a self-contained portable ZIP, and a SHA-256 checksum file in `artifacts/`. If .NET 10 is not already installed, the installer shows download progress while fetching its runtime from Microsoft, then displays the runtime installer. Inno Setup 6 is required when building locally.
