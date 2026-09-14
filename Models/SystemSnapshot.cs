@@ -16,7 +16,10 @@ public sealed record SystemSnapshot(
     IReadOnlyList<CoreMetric> Cores,
     IReadOnlyList<HardwareSensorMetric> Sensors,
     string TemperatureSource,
-    CpuInfoMetric? CpuInfo = null);
+    CpuInfoMetric? CpuInfo = null,
+    double DiskActivePercent = 0,
+    double DiskReadMbps = 0,
+    double DiskWriteMbps = 0);
 
 public sealed record ProcessInfo(string Name, string User, double Cpu, double Memory, string Status);
 public sealed record DiskMetric(string Name, string VolumeLabel, double UsedGigabytes, double TotalGigabytes, double UsagePercent);

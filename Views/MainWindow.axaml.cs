@@ -32,16 +32,25 @@ public partial class MainWindow : Window
             },
             topmost => { if (_overlayWindow is not null) _overlayWindow.Topmost = topmost; });
 
-        if (Program.CpuCapturePath is { } capturePath)
-            _ = CaptureCpuProofAsync(capturePath);
+        if (Program.CapturePath is { } capturePath)
+            _ = CaptureProofAsync(capturePath);
     }
 
-    private async Task CaptureCpuProofAsync(string path)
+    private async Task CaptureProofAsync(string path)
     {
         var deadline = DateTime.UtcNow.AddSeconds(25);
-        while (DataContext is MainViewModel viewModel && viewModel.LastUpdated == "WAITING FOR FIRST SAMPLE" && DateTime.UtcNow < deadline)
-            await Task.Delay(250);
-        await Task.Delay(2500);
+        if (Program.CaptureLoadingScreen)
+        {
+            while (DataContext is MainViewModel loadingViewModel && loadingViewModel.StartupStatus != "TELEMETRY ONLINE" && DateTime.UtcNow < deadline)
+                await Task.Delay(250);
+            await Task.Delay(350);
+        }
+        else
+        {
+            while (DataContext is MainViewModel readyViewModel && readyViewModel.IsStartupVisible && DateTime.UtcNow < deadline)
+                await Task.Delay(250);
+            await Task.Delay(500);
+        }
 
         try
         {

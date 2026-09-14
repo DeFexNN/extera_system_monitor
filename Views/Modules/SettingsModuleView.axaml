@@ -11,7 +11,11 @@
           <TextBlock Text="Settings" FontSize="31" FontWeight="SemiBold"/>
           <TextBlock Text="Configure ExteraMonitor's four global theme colors." Classes="muted" FontSize="14"/>
         </StackPanel>
-        <Button Grid.Column="1" Classes="module-action" Content="RESET THEME" Command="{Binding ResetCommand}" VerticalAlignment="Center"/>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <TextBlock Text="THEME" Classes="eyebrow" VerticalAlignment="Center"/>
+          <ComboBox Width="120" ItemsSource="{Binding Themes}" SelectedItem="{Binding SelectedTheme, Mode=TwoWay}"/>
+          <Button Classes="module-action" Content="RESET THEME" Command="{Binding ResetCommand}"/>
+        </StackPanel>
       </Grid>
 
       <Border Classes="panel">
@@ -21,12 +25,12 @@
           <ItemsControl ItemsSource="{Binding Colors}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
-                    <Grid ColumnDefinitions="132,*,Auto,Auto" ColumnSpacing="10" Margin="0,0,0,12">
+                    <Grid ColumnDefinitions="280,*,Auto,Auto" ColumnSpacing="12" Margin="0,0,0,10" MinHeight="42">
                   <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                     <Border Width="22" Height="22" CornerRadius="11" Background="{Binding SwatchBrush}" BorderBrush="{DynamicResource ThemeSoftBrush}" BorderThickness="1"/>
                     <StackPanel Spacing="2">
                       <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
-                      <TextBlock Text="{Binding Description}" Classes="muted" FontSize="11"/>
+                      <TextBlock Text="{Binding Description}" Classes="muted" FontSize="10" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                   </StackPanel>
                   <TextBox Grid.Column="1" Text="{Binding HexText}" PlaceholderText="#RRGGBB" VerticalContentAlignment="Center"/>
@@ -48,10 +52,10 @@
           <Border Background="{DynamicResource ThemeChromeBrush}" CornerRadius="13" Padding="14">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
               <StackPanel Spacing="8">
-                <TextBlock Text="EXTERA MONITOR" Foreground="{DynamicResource ThemeWindowBrush}" FontSize="13" FontWeight="Bold" LetterSpacing="1.2"/>
+                <TextBlock Text="EXTERA MONITOR" Foreground="{DynamicResource ThemeChromeTextBrush}" FontSize="13" FontWeight="Bold" LetterSpacing="1.2"/>
                 <Border Background="{DynamicResource ThemeWindowBrush}" CornerRadius="9" Padding="12">
                   <StackPanel Spacing="7">
-                    <TextBlock Text="Window surface" Foreground="{DynamicResource ThemeChromeBrush}" FontWeight="SemiBold"/>
+                    <TextBlock Text="Window surface" Foreground="{DynamicResource ThemeTextBrush}" FontWeight="SemiBold"/>
                     <TextBlock Text="Secondary text and progress tracks" Foreground="{DynamicResource ThemeAccentBrush}" FontSize="11"/>
                     <ProgressBar Value="68" Maximum="100"/>
                   </StackPanel>

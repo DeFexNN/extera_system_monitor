@@ -1,58 +1,59 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:ExteraMonitor.ViewModels.Modules"
-             xmlns:controls="using:ExteraMonitor.Views.Controls"
-             x:Class="ExteraMonitor.Views.Modules.OverviewModuleView"
-             x:CompileBindings="False">
-  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="24,22,24,28" Spacing="16">
-      <StackPanel Spacing="4">
-        <TextBlock Text="System overview" FontSize="30" FontWeight="SemiBold"/>
-        <TextBlock Text="A live snapshot of the resources Extera Monitor currently samples." Classes="muted" FontSize="13" TextWrapping="Wrap"/>
-      </StackPanel>
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:ExteraMonitor.Views.Controls" x:Class="ExteraMonitor.Views.Modules.OverviewModuleView" x:CompileBindings="False">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="28,22,28,30" Spacing="14">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
+        <StackPanel Spacing="3"><TextBlock Text="Command center" FontSize="30" FontWeight="SemiBold"/><TextBlock Text="Your workstation at a glance" Classes="muted" FontSize="13"/></StackPanel>
+        <Border Grid.Column="1" Classes="telemetry-card" CornerRadius="20" Padding="14,8" VerticalAlignment="Center"><StackPanel Orientation="Horizontal" Spacing="8"><Border Width="8" Height="8" CornerRadius="4" Background="{DynamicResource ThemeAccentBrush}" VerticalAlignment="Center"/><TextBlock Text="{Binding SystemStatus}" Classes="muted" FontSize="10" FontWeight="Bold" LetterSpacing="1.3" VerticalAlignment="Center"/></StackPanel></Border>
+      </Grid>
 
-      <WrapPanel Orientation="Horizontal">
-        <Border Classes="telemetry-card" Width="226" MinHeight="144" Padding="16" Margin="0,0,10,10">
-          <StackPanel Spacing="7"><TextBlock Text="PROCESSOR" Classes="eyebrow"/><TextBlock Text="{Binding Cpu, StringFormat={}{0:0.0}%}" Classes="value" FontSize="32"/><ProgressBar Value="{Binding Cpu}" Maximum="100"/><TextBlock Text="{Binding Cores}" Classes="muted" FontSize="11"/></StackPanel>
-        </Border>
-        <Border Classes="telemetry-card" Width="226" MinHeight="144" Padding="16" Margin="0,0,10,10">
-          <StackPanel Spacing="7"><TextBlock Text="CPU PACKAGE" Classes="eyebrow"/><TextBlock Text="{Binding CpuTemperature}" Classes="value" FontSize="32"/><TextBlock Text="Thermal channel from the active sensor source" Classes="muted" FontSize="11" TextWrapping="Wrap"/></StackPanel>
-        </Border>
-        <Border Classes="telemetry-card" Width="226" MinHeight="144" Padding="16" Margin="0,0,10,10">
-          <StackPanel Spacing="7"><TextBlock Text="PHYSICAL MEMORY" Classes="eyebrow"/><TextBlock Text="{Binding MemoryLabel}" Classes="value" FontSize="32"/><ProgressBar Value="{Binding Memory}" Maximum="100" IsVisible="{Binding HasMemoryData}"/><TextBlock Text="{Binding MemoryDetail}" Classes="muted" FontSize="11"/></StackPanel>
-        </Border>
-        <Border Classes="telemetry-card" Width="226" MinHeight="144" Padding="16" Margin="0,0,10,10">
-          <StackPanel Spacing="7"><TextBlock Text="PRIMARY VOLUME" Classes="eyebrow"/><TextBlock Text="{Binding StorageUsed}" Classes="value" FontSize="28"/><ProgressBar Value="{Binding Storage}" Maximum="100" IsVisible="{Binding HasStorageData}"/><TextBlock Text="{Binding PrimaryVolume}" Classes="muted" FontSize="11" TextWrapping="Wrap"/></StackPanel>
-        </Border>
-        <Border Classes="telemetry-card" Width="226" MinHeight="144" Padding="16" Margin="0,0,10,10">
-          <StackPanel Spacing="7"><TextBlock Text="NETWORK THROUGHPUT" Classes="eyebrow"/><TextBlock Text="{Binding NetworkSummary}" Classes="value" FontSize="20" TextWrapping="Wrap"/><TextBlock Text="Aggregate active-interface counters" Classes="muted" FontSize="11" TextWrapping="Wrap"/></StackPanel>
-        </Border>
-      </WrapPanel>
-
-      <Border Classes="panel">
-        <StackPanel Spacing="12">
-          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-            <StackPanel Spacing="3"><TextBlock Text="RESOURCE HISTORY" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="Last 30 samples · about one minute at the requested refresh cadence" Classes="muted" FontSize="11" TextWrapping="Wrap"/></StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-              <StackPanel Orientation="Horizontal" Spacing="5"><Border Width="8" Height="8" CornerRadius="4" Background="{DynamicResource ThemeAccentBrush}"/><TextBlock Text="CPU" Classes="muted" FontSize="10"/></StackPanel>
-              <StackPanel Orientation="Horizontal" Spacing="5"><Border Width="8" Height="8" CornerRadius="4" Background="#D86B24"/><TextBlock Text="MEMORY" Classes="muted" FontSize="10"/></StackPanel>
-              <StackPanel Orientation="Horizontal" Spacing="5"><Border Width="8" Height="8" CornerRadius="4" Background="#7353C6"/><TextBlock Text="DISK" Classes="muted" FontSize="10"/></StackPanel>
+      <Grid ColumnDefinitions="1.65*,1*" ColumnSpacing="14" Height="250">
+        <Border Classes="panel" BorderBrush="{DynamicResource ThemeAccentBrush}" Padding="24" ClipToBounds="True">
+          <Grid ColumnDefinitions="*,220" ColumnSpacing="20">
+            <StackPanel Spacing="14" VerticalAlignment="Center">
+              <StackPanel Spacing="5"><TextBlock Text="SYSTEM PULSE" Classes="eyebrow" FontSize="10" LetterSpacing="2.2"/><TextBlock Text="{Binding SystemStatus}" FontSize="25" FontWeight="SemiBold"/><TextBlock Text="{Binding SystemStatusDetail}" Classes="muted" FontSize="12"/></StackPanel>
+              <Border Height="1" Background="{DynamicResource ThemeBorderBrush}"/>
+              <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
+                <StackPanel Spacing="3"><TextBlock Text="ACTIVITY" Classes="muted" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding CpuActivity}" FontSize="12" FontWeight="SemiBold"/></StackPanel>
+                <StackPanel Grid.Column="1" Spacing="3"><TextBlock Text="CPU TEMP" Classes="muted" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding CpuTemperature}" FontSize="12" FontWeight="SemiBold"/></StackPanel>
+                <StackPanel Grid.Column="2" Spacing="3"><TextBlock Text="LOGICAL CPU" Classes="muted" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding ThreadCount}" FontSize="12" FontWeight="SemiBold"/></StackPanel>
+                <StackPanel Grid.Column="3" Spacing="3"><TextBlock Text="PROCESSES" Classes="muted" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding ProcessCount}" FontSize="12" FontWeight="SemiBold"/></StackPanel>
+              </Grid>
             </StackPanel>
+            <Grid Grid.Column="1" Width="190" Height="190" HorizontalAlignment="Center" VerticalAlignment="Center"><controls:CoreLoadGauge Usage="{Binding Cpu}" Accent="{DynamicResource ThemeAccentBrush}" Track="{DynamicResource ThemeChartGridBrush}"/><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"><TextBlock Text="{Binding Cpu, StringFormat={}{0:0.0}%}" FontSize="36" FontWeight="SemiBold" HorizontalAlignment="Center"/><TextBlock Text="CPU LOAD" Classes="muted" FontSize="9" FontWeight="Bold" LetterSpacing="1.4" HorizontalAlignment="Center"/></StackPanel></Grid>
           </Grid>
-          <Grid Height="220" ClipToBounds="True">
-            <controls:TelemetryGraph Values="{Binding CpuHistory}" Stroke="{DynamicResource ThemeAccentBrush}" Minimum="0" Maximum="100"/>
-            <controls:TelemetryGraph Values="{Binding MemoryHistory}" Stroke="#D86B24" Minimum="0" Maximum="100" ShowGrid="False" IsVisible="{Binding HasMemoryData}"/>
-            <controls:TelemetryGraph Values="{Binding StorageHistory}" Stroke="#7353C6" Minimum="0" Maximum="100" ShowGrid="False" IsVisible="{Binding HasStorageData}"/>
-          </Grid>
-        </StackPanel>
-      </Border>
+        </Border>
 
-      <WrapPanel Orientation="Horizontal">
-        <Border Classes="panel" Width="226" Padding="15" Margin="0,0,10,10"><StackPanel Spacing="4"><TextBlock Text="SESSION UPTIME" Classes="eyebrow"/><TextBlock Text="{Binding Uptime}" FontSize="22" FontWeight="SemiBold"/></StackPanel></Border>
-        <Border Classes="panel" Width="226" Padding="15" Margin="0,0,10,10"><StackPanel Spacing="4"><TextBlock Text="PROCESSES" Classes="eyebrow"/><TextBlock Text="{Binding ProcessCount}" FontSize="22" FontWeight="SemiBold"/><TextBlock Text="system-wide count" Classes="muted" FontSize="10"/></StackPanel></Border>
-        <Border Classes="panel" Width="226" Padding="15" Margin="0,0,10,10"><StackPanel Spacing="4"><TextBlock Text="EXPOSED SENSORS" Classes="eyebrow"/><TextBlock Text="{Binding SensorCount}" FontSize="22" FontWeight="SemiBold"/><TextBlock Text="currently reported readings" Classes="muted" FontSize="10"/></StackPanel></Border>
-        <Border Classes="panel" Width="226" Padding="15" Margin="0,0,10,10"><StackPanel Spacing="4"><TextBlock Text="RAM CAPACITY" Classes="eyebrow"/><TextBlock Text="{Binding MemoryCapacityLabel}" FontSize="22" FontWeight="SemiBold"/><TextBlock Text="physical memory" Classes="muted" FontSize="10"/></StackPanel></Border>
-      </WrapPanel>
+        <Grid Grid.Column="1" RowDefinitions="*,*" RowSpacing="14">
+          <Border Classes="telemetry-card" Padding="18"><Grid ColumnDefinitions="*,Auto"><StackPanel Spacing="5"><TextBlock Text="GPU STATUS" Classes="eyebrow" FontSize="10"/><StackPanel Orientation="Horizontal" Spacing="10"><TextBlock Text="{Binding GpuUsageLabel}" FontSize="29" FontWeight="SemiBold"/><TextBlock Text="{Binding GpuTemperatureLabel}" Foreground="#8068D8" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Bottom" Margin="0,0,0,4"/></StackPanel><TextBlock Text="{Binding GpuName}" Classes="muted" FontSize="10" TextTrimming="CharacterEllipsis"/></StackPanel><Grid Grid.Column="1" Width="78" Height="78" VerticalAlignment="Center"><controls:CoreLoadGauge Usage="{Binding GpuUsage}" Accent="#8068D8" Track="{DynamicResource ThemeChartGridBrush}"/><TextBlock Text="GPU" Classes="muted" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Grid></Grid></Border>
+          <Border Grid.Row="1" Classes="telemetry-card" Padding="18"><Grid ColumnDefinitions="*,Auto"><StackPanel Spacing="5"><TextBlock Text="MEMORY PRESSURE" Classes="eyebrow" FontSize="10"/><TextBlock Text="{Binding MemoryLabel}" FontSize="29" FontWeight="SemiBold"/><TextBlock Text="{Binding MemoryDetail}" Classes="muted" FontSize="10" TextTrimming="CharacterEllipsis"/></StackPanel><Grid Grid.Column="1" Width="78" Height="78" VerticalAlignment="Center"><controls:CoreLoadGauge Usage="{Binding Memory}" Accent="#E58A45" Track="{DynamicResource ThemeChartGridBrush}"/><TextBlock Text="RAM" Classes="muted" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Grid></Grid></Border>
+        </Grid>
+      </Grid>
+
+      <Grid ColumnDefinitions="2*,1*" ColumnSpacing="14" Height="270">
+        <Border Classes="panel" Padding="18">
+          <Grid RowDefinitions="Auto,12,*">
+            <Grid ColumnDefinitions="*,Auto"><StackPanel Spacing="3"><TextBlock Text="Live resource signal" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="Processor, memory and graphics load · normalized 0–100%" Classes="muted" FontSize="11"/></StackPanel><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="13" VerticalAlignment="Center"><StackPanel Orientation="Horizontal" Spacing="5"><Border Width="8" Height="8" CornerRadius="4" Background="{DynamicResource ThemeAccentBrush}"/><TextBlock Text="CPU" Classes="muted" FontSize="9"/></StackPanel><StackPanel Orientation="Horizontal" Spacing="5"><Border Width="8" Height="8" CornerRadius="4" Background="#E58A45"/><TextBlock Text="RAM" Classes="muted" FontSize="9"/></StackPanel><StackPanel Orientation="Horizontal" Spacing="5"><Border Width="8" Height="8" CornerRadius="4" Background="#8068D8"/><TextBlock Text="GPU" Classes="muted" FontSize="9"/></StackPanel></StackPanel></Grid>
+            <Border Grid.Row="2" Background="{DynamicResource ThemeWindowBrush}" BorderBrush="{DynamicResource ThemeChartGridBrush}" BorderThickness="1" CornerRadius="12" Padding="12" ClipToBounds="True">
+              <Grid ColumnDefinitions="*,118" ColumnSpacing="12">
+                <Grid><controls:TelemetryGraph Values="{Binding CpuHistory}" Stroke="{DynamicResource ThemeAccentBrush}" GridStroke="{DynamicResource ThemeChartGridBrush}" Minimum="0" Maximum="100"/><controls:TelemetryGraph Values="{Binding MemoryHistory}" Stroke="#E58A45" Minimum="0" Maximum="100" ShowGrid="False" IsVisible="{Binding HasMemoryData}"/><controls:TelemetryGraph Values="{Binding GpuHistory}" Stroke="#8068D8" Minimum="0" Maximum="100" ShowGrid="False"/></Grid>
+                <Border Grid.Column="1" Background="{DynamicResource ThemeCardBrush}" BorderBrush="{DynamicResource ThemeChartGridBrush}" BorderThickness="1" CornerRadius="9" Padding="10"><StackPanel Spacing="11" VerticalAlignment="Center"><StackPanel Spacing="2"><TextBlock Text="CPU LOAD" Classes="muted" FontSize="8"/><TextBlock Text="{Binding Cpu, StringFormat={}{0:0.0}%}" Foreground="{DynamicResource ThemeAccentBrush}" FontSize="15" FontWeight="Bold"/></StackPanel><StackPanel Spacing="2"><TextBlock Text="RAM USED" Classes="muted" FontSize="8"/><TextBlock Text="{Binding MemoryLabel}" Foreground="#E58A45" FontSize="15" FontWeight="Bold"/></StackPanel><StackPanel Spacing="2"><TextBlock Text="GPU LOAD" Classes="muted" FontSize="8"/><TextBlock Text="{Binding GpuUsageLabel}" Foreground="#8068D8" FontSize="15" FontWeight="Bold"/><TextBlock Text="{Binding GpuTemperatureLabel}" Classes="muted" FontSize="8"/></StackPanel></StackPanel></Border>
+              </Grid>
+            </Border>
+          </Grid>
+        </Border>
+
+        <Grid Grid.Column="1" RowDefinitions="*,*" RowSpacing="14">
+          <Border Classes="panel" Padding="17"><Grid RowDefinitions="Auto,*,Auto"><TextBlock Text="NETWORK FLOW" Classes="eyebrow" FontSize="10"/><Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="12" VerticalAlignment="Center"><StackPanel Spacing="3"><TextBlock Text="DOWNLOAD" Classes="muted" FontSize="9"/><TextBlock Text="{Binding DownloadLabel}" FontSize="18" FontWeight="SemiBold"/></StackPanel><StackPanel Grid.Column="1" Spacing="3"><TextBlock Text="UPLOAD" Classes="muted" FontSize="9"/><TextBlock Text="{Binding UploadLabel}" FontSize="18" FontWeight="SemiBold"/></StackPanel></Grid><TextBlock Grid.Row="2" Text="AGGREGATE ACTIVE INTERFACES" Classes="muted" FontSize="9" LetterSpacing="0.6"/></Grid></Border>
+          <Border Grid.Row="1" Classes="panel" Padding="17"><Grid RowDefinitions="Auto,*,Auto"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="PRIMARY STORAGE" Classes="eyebrow" FontSize="10"/><TextBlock Grid.Column="1" Text="{Binding DiskActivityLabel}" Classes="muted" FontSize="9" FontWeight="Bold"/></Grid><Grid Grid.Row="1" ColumnDefinitions="*,Auto" VerticalAlignment="Center"><StackPanel Spacing="3"><TextBlock Text="{Binding StorageUsed}" FontSize="22" FontWeight="SemiBold"/><TextBlock Text="{Binding PrimaryVolume}" Classes="muted" FontSize="10" TextTrimming="CharacterEllipsis"/></StackPanel><StackPanel Grid.Column="1" Spacing="3" HorizontalAlignment="Right"><TextBlock Text="{Binding DiskReadLabel}" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right"/><TextBlock Text="{Binding DiskWriteLabel}" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right"/></StackPanel></Grid><ProgressBar Grid.Row="2" Value="{Binding Storage}" Maximum="100" IsVisible="{Binding HasStorageData}"/></Grid></Border>
+        </Grid>
+      </Grid>
+
+      <UniformGrid Columns="4" Rows="1">
+        <Border Classes="panel" Padding="13" Margin="0,0,10,0"><StackPanel Spacing="3"><TextBlock Text="UPTIME" Classes="eyebrow" FontSize="9"/><TextBlock Text="{Binding Uptime}" FontSize="19" FontWeight="SemiBold"/></StackPanel></Border>
+        <Border Classes="panel" Padding="13" Margin="0,0,10,0"><StackPanel Spacing="3"><TextBlock Text="PRIMARY VOLUME" Classes="eyebrow" FontSize="9"/><TextBlock Text="{Binding PrimaryVolume}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/></StackPanel></Border>
+        <Border Classes="panel" Padding="13" Margin="0,0,10,0"><StackPanel Spacing="3"><TextBlock Text="RAM CAPACITY" Classes="eyebrow" FontSize="9"/><TextBlock Text="{Binding MemoryCapacityLabel}" FontSize="19" FontWeight="SemiBold"/></StackPanel></Border>
+        <Border Classes="panel" Padding="13"><StackPanel Spacing="3"><TextBlock Text="CPU TOPOLOGY" Classes="eyebrow" FontSize="9"/><TextBlock Text="{Binding Cores}" FontSize="16" FontWeight="SemiBold"/></StackPanel></Border>
+      </UniformGrid>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

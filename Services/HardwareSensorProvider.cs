@@ -35,6 +35,10 @@ public sealed class LibreHardwareSensorProvider : IHardwareSensorProvider
                 .Where(sensor => sensor.Sensor.Value.HasValue)
                 .ToList();
             var sensors = sampledSensors.Select(sensor => new HardwareSensorMetric(sensor.HardwareName, sensor.Sensor.Name, sensor.Sensor.SensorType.ToString(), sensor.Sensor.Value!.Value, UnitFor(sensor.Sensor.SensorType))).ToList();
+            var hasGpuLoad = sampledSensors.Any(sensor => sensor.HardwareType.ToString().StartsWith("Gpu", StringComparison.OrdinalIgnoreCase) && sensor.Sensor.SensorType == SensorType.Load);
+            var hasGpuTemperature = sampledSensors.Any(sensor => sensor.HardwareType.ToString().StartsWith("Gpu", StringComparison.OrdinalIgnoreCase) && sensor.Sensor.SensorType == SensorType.Temperature);
+            if (!hasGpuLoad || !hasGpuTemperature)
+                sensors.AddRange(ReadNvidiaDriverSensors(hasGpuLoad, hasGpuTemperature));
             var cpuTemperature = sampledSensors.Where(sensor => sensor.HardwareType == HardwareType.Cpu && sensor.Sensor.SensorType == SensorType.Temperature)
                 .OrderByDescending(sensor => sensor.Sensor.Name.Contains("Package", StringComparison.OrdinalIgnoreCase))
                 .Select(sensor => (double)sensor.Sensor.Value!.Value).FirstOrDefault();
@@ -53,6 +57,37 @@ public sealed class LibreHardwareSensorProvider : IHardwareSensorProvider
 
     private static IEnumerable<(string HardwareName, HardwareType HardwareType, ISensor Sensor)> Flatten(IEnumerable<IHardware> hardware) => hardware.SelectMany(item => item.Sensors.Select(sensor => (item.Name, item.HardwareType, sensor)).Concat(Flatten(item.SubHardware)));
     private static string UnitFor(SensorType type) => type switch { SensorType.Temperature => "°C", SensorType.Load => "%", SensorType.Clock => "MHz", SensorType.Fan => "RPM", SensorType.Power => "W", SensorType.Current => "A", SensorType.Voltage => "V", SensorType.Factor => "x", SensorType.Data => "GB", SensorType.SmallData => "MB", _ => "" };
+    private static IReadOnlyList<HardwareSensorMetric> ReadNvidiaDriverSensors(bool alreadyHasLoad, bool alreadyHasTemperature)
+    {
+        if (alreadyHasLoad && alreadyHasTemperature) return Array.Empty<HardwareSensorMetric>();
+        try
+        {
+            var executable = Path.Combine(Environment.SystemDirectory, "nvidia-smi.exe");
+            if (!File.Exists(executable)) executable = "nvidia-smi.exe";
+            using var process = Process.Start(new ProcessStartInfo
+            {
+                FileName = executable,
+                Arguments = "--query-gpu=name,utilization.gpu,temperature.gpu --format=csv,noheader,nounits",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            });
+            if (process is null) return Array.Empty<HardwareSensorMetric>();
+            var output = process.StandardOutput.ReadLine();
+            if (!process.WaitForExit(1500) || string.IsNullOrWhiteSpace(output)) return Array.Empty<HardwareSensorMetric>();
+            var parts = output.Split(',', StringSplitOptions.TrimEntries);
+            if (parts.Length < 3) return Array.Empty<HardwareSensorMetric>();
+            var hardware = parts[0];
+            var result = new List<HardwareSensorMetric>(2);
+            if (!alreadyHasLoad && double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var load))
+                result.Add(new HardwareSensorMetric(hardware, "GPU Core (NVAPI)", "Load", load, "%"));
+            if (!alreadyHasTemperature && double.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var temperature))
+                result.Add(new HardwareSensorMetric(hardware, "GPU Core (NVAPI)", "Temperature", temperature, "°C"));
+            return result;
+        }
+        catch { return Array.Empty<HardwareSensorMetric>(); }
+    }
     [SupportedOSPlatform("windows")]
     private static double ReadWmiTemperature()
     {

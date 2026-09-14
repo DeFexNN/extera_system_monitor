@@ -79,8 +79,10 @@ public sealed class SensorReadingViewModel : ViewModelBase
 public sealed class OverviewModuleViewModel : MonitorModuleViewModel
 {
     private const int HistoryLimit = 30;
-    private readonly List<double> _cpuHistory = new(), _memoryHistory = new(), _storageHistory = [];
-    private double _cpu, _memory, _storage, _download, _upload, _memoryTotal, _storageTotal;
+    private readonly List<double> _cpuHistory = new(), _memoryHistory = new(), _gpuHistory = [];
+    private double _cpu, _memory, _storage, _download, _upload, _memoryTotal, _storageTotal, _gpuTemperature;
+    private double _diskActive, _diskReadMbps, _diskWriteMbps;
+    private double _gpuUsage = -1;
     private int _threadCount, _sensorCount, _processCount, _networkSamples;
     private string _uptime = "—", _primaryVolume = "No ready volume";
     public double Cpu { get => _cpu; private set => SetProperty(ref _cpu, value); }
@@ -90,41 +92,73 @@ public sealed class OverviewModuleViewModel : MonitorModuleViewModel
     public double Upload { get => _upload; private set => SetProperty(ref _upload, value); }
     public double MemoryTotal { get => _memoryTotal; private set => SetProperty(ref _memoryTotal, value); }
     public double StorageTotal { get => _storageTotal; private set => SetProperty(ref _storageTotal, value); }
+    public double GpuUsage { get => _gpuUsage; private set => SetProperty(ref _gpuUsage, value); }
+    public double GpuTemperature { get => _gpuTemperature; private set => SetProperty(ref _gpuTemperature, value); }
+    public double DiskActive { get => _diskActive; private set => SetProperty(ref _diskActive, value); }
+    public double DiskReadMbps { get => _diskReadMbps; private set => SetProperty(ref _diskReadMbps, value); }
+    public double DiskWriteMbps { get => _diskWriteMbps; private set => SetProperty(ref _diskWriteMbps, value); }
     public int ThreadCount { get => _threadCount; private set => SetProperty(ref _threadCount, value); }
     public int SensorCount { get => _sensorCount; private set => SetProperty(ref _sensorCount, value); }
     public int ProcessCount { get => _processCount; private set => SetProperty(ref _processCount, value); }
     public string Uptime { get => _uptime; private set => SetProperty(ref _uptime, value); }
     public string PrimaryVolume { get => _primaryVolume; private set => SetProperty(ref _primaryVolume, value); }
     public string Cores => $"{ThreadCount} logical processors";
-    public string CpuTemperature { get; private set; } = "N/A";
-    public string MemoryLabel => MemoryTotal > 0 ? $"{Memory:0.0}%" : "N/A";
+    public string CpuActivity => Cpu switch { >= 85 => "HIGH LOAD", >= 45 => "ACTIVE", >= 15 => "BALANCED", _ => "LOW ACTIVITY" };
+    public string SystemStatus => Cpu >= 90 || Memory >= 95 ? "ATTENTION REQUIRED" : "SYSTEM NOMINAL";
+    public string SystemStatusDetail => Cpu >= 90 ? "Processor load is near capacity" : Memory >= 95 ? "Physical memory is nearly full" : "All monitored resources are within range";
+    public string CpuTemperature { get; private set; } = "DRIVER SYNC";
+    public string MemoryLabel => MemoryTotal > 0 ? $"{Memory:0.0}%" : "SYNC";
     public bool HasMemoryData => MemoryTotal > 0;
-    public string MemoryCapacityLabel => MemoryTotal > 0 ? $"{MemoryTotal:0.0} GB" : "N/A";
-    public string MemoryUsed => MemoryTotal > 0 ? $"{MemoryTotal * Memory / 100:0.0} GB" : "N/A";
+    public string MemoryCapacityLabel => MemoryTotal > 0 ? $"{MemoryTotal:0.0} GB" : "SYNC";
+    public string MemoryUsed => MemoryTotal > 0 ? $"{MemoryTotal * Memory / 100:0.0} GB" : "SYNC";
     public string MemoryDetail => MemoryTotal > 0 ? $"{MemoryTotal * Memory / 100:0.0} GB of {MemoryTotal:0.0} GB RAM" : "Capacity unavailable";
-    public string StorageUsed => StorageTotal > 0 ? $"{StorageTotal * Storage / 100:0.0} GB" : "N/A";
+    public string StorageUsed => StorageTotal > 0 ? $"{StorageTotal * Storage / 100:0.0} GB" : "NO VOLUME";
+    public string StorageLabel => StorageTotal > 0 ? $"{Storage:0.0}% USED" : "NO VOLUME";
+    public string StorageCapacityLabel => StorageTotal > 0 ? $"{StorageTotal * Storage / 100:0.0} / {StorageTotal:0.0} GB" : "NO VOLUME";
+    public string DiskActivityLabel => $"{DiskActive:0.0}% active";
+    public string DiskReadLabel => $"↓ {DiskReadMbps:0.0} MB/s";
+    public string DiskWriteLabel => $"↑ {DiskWriteMbps:0.0} MB/s";
     public bool HasStorageData => StorageTotal > 0;
     public string NetworkSummary => _networkSamples > 1 ? $"↓ {Download:0.0}  ·  ↑ {Upload:0.0} Mbps" : "Collecting network counter baseline…";
+    public string DownloadLabel => _networkSamples > 1 ? $"{Download:0.0} Mbps" : "—";
+    public string UploadLabel => _networkSamples > 1 ? $"{Upload:0.0} Mbps" : "—";
+    public string GpuUsageLabel => GpuUsage >= 0 ? $"{GpuUsage:0.0}%" : "DRIVER SYNC";
+    public string GpuTemperatureLabel => GpuTemperature > 0 ? $"{GpuTemperature:0.0} °C" : "SYNC";
+    public string GpuName { get; private set; } = "GPU DRIVER TELEMETRY";
     public IReadOnlyList<double> CpuHistory => _cpuHistory.ToArray();
     public IReadOnlyList<double> MemoryHistory => _memoryHistory.ToArray();
-    public IReadOnlyList<double> StorageHistory => _storageHistory.ToArray();
+    public IReadOnlyList<double> GpuHistory => _gpuHistory.ToArray();
     public OverviewModuleViewModel() : base("Overview") { }
 
     public override void Update(SystemSnapshot snapshot)
     {
         Cpu = snapshot.CpuUsage; Memory = snapshot.MemoryUsage; Storage = snapshot.StorageUsage;
         Download = snapshot.DownloadMbps; Upload = snapshot.UploadMbps; MemoryTotal = snapshot.MemoryTotal; StorageTotal = snapshot.StorageTotal; _networkSamples++;
+        DiskActive = snapshot.DiskActivePercent; DiskReadMbps = snapshot.DiskReadMbps; DiskWriteMbps = snapshot.DiskWriteMbps;
         ThreadCount = snapshot.CpuInfo?.ThreadCount ?? (snapshot.Cores.Count > 0 ? snapshot.Cores.Count : Environment.ProcessorCount);
         SensorCount = snapshot.Sensors.Count; ProcessCount = snapshot.ProcessCount;
+        var gpuSensors = snapshot.Sensors.Where(IsGpuSensor).ToArray();
+        var gpuLoads = gpuSensors.Where(sensor => sensor.Type.Equals("Load", StringComparison.OrdinalIgnoreCase) && !sensor.Name.Contains("Memory", StringComparison.OrdinalIgnoreCase)).ToArray();
+        var preferredGpuLoad = gpuLoads.FirstOrDefault(sensor => sensor.Name.Contains("Core", StringComparison.OrdinalIgnoreCase) || sensor.Name.Contains("3D", StringComparison.OrdinalIgnoreCase));
+        if (preferredGpuLoad is not null || gpuLoads.Length > 0)
+            GpuUsage = preferredGpuLoad?.Value ?? gpuLoads.Max(sensor => sensor.Value);
+        var gpuTemperatures = gpuSensors.Where(sensor => sensor.Type.Equals("Temperature", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (gpuTemperatures.Length > 0) GpuTemperature = gpuTemperatures.Max(sensor => sensor.Value);
+        if (gpuSensors.FirstOrDefault() is { } gpuSensor) GpuName = gpuSensor.HardwareName;
         Uptime = $"{(int)snapshot.Uptime.TotalHours}h {snapshot.Uptime.Minutes:00}m";
         var disk = snapshot.Disks.FirstOrDefault(); PrimaryVolume = disk is null ? "No ready volume" : $"{disk.Name} · {disk.VolumeLabel}";
-        CpuTemperature = snapshot.CpuTemperature > 0 ? $"{snapshot.CpuTemperature:0.0} °C" : "N/A";
-        Append(_cpuHistory, Cpu); if (snapshot.MemoryTotal > 0) Append(_memoryHistory, Memory); if (snapshot.StorageTotal > 0) Append(_storageHistory, Storage);
-        OnPropertyChanged(nameof(Cores)); OnPropertyChanged(nameof(CpuTemperature)); OnPropertyChanged(nameof(MemoryLabel)); OnPropertyChanged(nameof(HasMemoryData)); OnPropertyChanged(nameof(MemoryCapacityLabel)); OnPropertyChanged(nameof(MemoryUsed)); OnPropertyChanged(nameof(MemoryDetail)); OnPropertyChanged(nameof(StorageUsed)); OnPropertyChanged(nameof(HasStorageData));
-        OnPropertyChanged(nameof(NetworkSummary)); OnPropertyChanged(nameof(CpuHistory)); OnPropertyChanged(nameof(MemoryHistory)); OnPropertyChanged(nameof(StorageHistory));
+        if (snapshot.CpuTemperature > 0) CpuTemperature = $"{snapshot.CpuTemperature:0.0} °C";
+        Append(_cpuHistory, Cpu); if (snapshot.MemoryTotal > 0) Append(_memoryHistory, Memory); if (GpuUsage >= 0) Append(_gpuHistory, GpuUsage);
+        OnPropertyChanged(nameof(Cores)); OnPropertyChanged(nameof(CpuActivity)); OnPropertyChanged(nameof(SystemStatus)); OnPropertyChanged(nameof(SystemStatusDetail)); OnPropertyChanged(nameof(CpuTemperature)); OnPropertyChanged(nameof(MemoryLabel)); OnPropertyChanged(nameof(HasMemoryData)); OnPropertyChanged(nameof(MemoryCapacityLabel)); OnPropertyChanged(nameof(MemoryUsed)); OnPropertyChanged(nameof(MemoryDetail)); OnPropertyChanged(nameof(StorageUsed)); OnPropertyChanged(nameof(StorageLabel)); OnPropertyChanged(nameof(StorageCapacityLabel)); OnPropertyChanged(nameof(HasStorageData));
+        OnPropertyChanged(nameof(DiskActivityLabel)); OnPropertyChanged(nameof(DiskReadLabel)); OnPropertyChanged(nameof(DiskWriteLabel)); OnPropertyChanged(nameof(NetworkSummary)); OnPropertyChanged(nameof(DownloadLabel)); OnPropertyChanged(nameof(UploadLabel)); OnPropertyChanged(nameof(GpuUsageLabel)); OnPropertyChanged(nameof(GpuTemperatureLabel)); OnPropertyChanged(nameof(GpuName)); OnPropertyChanged(nameof(CpuHistory)); OnPropertyChanged(nameof(MemoryHistory)); OnPropertyChanged(nameof(GpuHistory));
     }
 
     private static void Append(List<double> history, double value) { history.Add(value); while (history.Count > HistoryLimit) history.RemoveAt(0); }
+    private static bool IsGpuSensor(HardwareSensorMetric sensor) =>
+        sensor.HardwareName.Contains("GPU", StringComparison.OrdinalIgnoreCase) ||
+        sensor.HardwareName.Contains("NVIDIA", StringComparison.OrdinalIgnoreCase) ||
+        sensor.HardwareName.Contains("Radeon", StringComparison.OrdinalIgnoreCase) ||
+        sensor.Name.Contains("GPU", StringComparison.OrdinalIgnoreCase);
 }
 public sealed class CpuModuleViewModel : MonitorModuleViewModel
 {
@@ -148,6 +182,7 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
     private string _historyRange = "10m";
     private double _lastSurfaceWidth;
     private bool _isWidgetLibraryVisible;
+    private bool _isDarkTheme;
     private bool _suspendCustomizationPersistence;
     private bool _receivedCpuUsageBaseline;
     private bool _showHistoryLoad = true, _showHistoryTemperature = true, _showHistoryClock = true, _showHistoryPower = true;
@@ -186,8 +221,10 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
             if (accent is not null)
             {
                 AccentColor = accent.GetColor();
+                ApplyAccentToWidgets(AccentColor);
                 OnPropertyChanged(nameof(SelectedAccentColor));
                 OnPropertyChanged(nameof(SelectedAccentHex));
+                SaveCustomization();
             }
         }
     }
@@ -268,6 +305,18 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
 
     public void SetWidgetLibraryVisible(bool visible) => IsWidgetLibraryVisible = visible;
 
+    public void ApplyTheme(bool dark)
+    {
+        _isDarkTheme = dark;
+        var wasSuspended = _suspendCustomizationPersistence;
+        _suspendCustomizationPersistence = true;
+        try
+        {
+            foreach (var widget in Widgets) widget.ApplyTheme(dark);
+        }
+        finally { _suspendCustomizationPersistence = wasSuspended; }
+    }
+
     public void LoadCustomization(ICpuCustomizationRepository repository, bool persistNormalization = true)
     {
         _customizationRepository = repository;
@@ -327,7 +376,11 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
         OnPropertyChanged(nameof(HistoryRange)); OnPropertyChanged(nameof(HistorySampleCount)); OnPropertyChanged(nameof(HistoryTicks));
         OnPropertyChanged(nameof(ShowHistoryLoad)); OnPropertyChanged(nameof(ShowHistoryTemperature)); OnPropertyChanged(nameof(ShowHistoryClock)); OnPropertyChanged(nameof(ShowHistoryPower));
         OnPropertyChanged(nameof(SensorsExpanded)); OnPropertyChanged(nameof(SensorsCollapsed));
-        SelectedAccentPreset = Accents.Any(accent => accent.Name == _selectedAccentPreset) ? _selectedAccentPreset : "TEAL";
+        _selectedAccentPreset = Accents.Any(accent => accent.Name == _selectedAccentPreset) ? _selectedAccentPreset : "TEAL";
+        AccentColor = Accents.First(accent => accent.Name == _selectedAccentPreset).GetColor();
+        OnPropertyChanged(nameof(SelectedAccentPreset));
+        OnPropertyChanged(nameof(SelectedAccentColor));
+        OnPropertyChanged(nameof(SelectedAccentHex));
         OnPropertyChanged(nameof(HistoryTemperatureBrush)); OnPropertyChanged(nameof(HistoryClockBrush)); OnPropertyChanged(nameof(HistoryPowerBrush));
         if (persistNormalization) SaveCustomization();
     }
@@ -404,6 +457,7 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
         {
             try { widget.SetAccent(Color.Parse(accentColorHex)); } catch (FormatException) { }
         }
+        widget.ApplyTheme(_isDarkTheme);
         widget.Changed = () => { if (_lastSurfaceWidth > 0) ResizeWidgets(_lastSurfaceWidth); SaveCustomization(); };
         if (save && x is null && y is null) PlaceInNextAvailableGridSlot(widget);
         Widgets.Add(widget);
@@ -584,6 +638,7 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
         if (accent.Name == SelectedAccentPreset)
         {
             AccentColor = accent.GetColor();
+            ApplyAccentToWidgets(AccentColor);
             OnPropertyChanged(nameof(SelectedAccentColor));
             OnPropertyChanged(nameof(SelectedAccentHex));
         }
@@ -594,6 +649,17 @@ public sealed class CpuModuleViewModel : MonitorModuleViewModel
     }
 
     private IBrush GetAccentBrush(string name) => Accents.FirstOrDefault(item => item.Name.Equals(name, StringComparison.OrdinalIgnoreCase))?.SwatchBrush ?? AccentBrush;
+
+    private void ApplyAccentToWidgets(Color color)
+    {
+        var wasSuspended = _suspendCustomizationPersistence;
+        _suspendCustomizationPersistence = true;
+        try
+        {
+            foreach (var widget in Widgets) widget.SetAccent(color);
+        }
+        finally { _suspendCustomizationPersistence = wasSuspended; }
+    }
 
     private static bool IsPreviousDefaultLayout(IReadOnlyList<CpuWidgetLayout> widgets)
     {

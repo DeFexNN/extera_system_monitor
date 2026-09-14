@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
+using System.Runtime.Versioning;
 using ExteraMonitor.Models;
 
 namespace ExteraMonitor.Services;
@@ -15,6 +16,8 @@ public sealed class WindowsSystemMetricsProvider : ISystemMetricsProvider, IDisp
     private CoreTimes[] _previousCoreTimes = [];
     private Task<IReadOnlyList<DiskMetric>>? _diskReadTask;
     private IReadOnlyList<DiskMetric> _lastDisks = Array.Empty<DiskMetric>();
+    private Task<DiskPerformanceSample>? _diskPerformanceTask;
+    private DiskPerformanceSample _lastDiskPerformance;
     private readonly IHardwareSensorProvider _hardwareSensors = new FallbackHardwareSensorProvider(
         new KernelTemperatureProvider(),
         new LibreHardwareSensorProvider());
@@ -28,6 +31,7 @@ public sealed class WindowsSystemMetricsProvider : ISystemMetricsProvider, IDisp
         var memory = ReadMemory(); var cores = ReadCoreUsage(); var hardware = _hardwareSensors.Read();
         // A stalled/removable volume must never block CPU, memory, network or sensors.
         var disks = ReadDisksInBackground();
+        var diskPerformance = ReadDiskPerformanceInBackground();
         var (download, upload) = ReadNetwork();
         var processes = ReadProcesses(out var processCount);
         var primary = disks.FirstOrDefault() ?? new DiskMetric("—", "No fixed disk", 0, 0, 0);
@@ -35,7 +39,8 @@ public sealed class WindowsSystemMetricsProvider : ISystemMetricsProvider, IDisp
         return new SystemSnapshot(
             cores.Count == 0 ? ReadCpuUsage() : cores.Average(core => core.UsagePercent), hardware.CpuTemperature, memory.UsagePercent, memory.TotalGigabytes,
             primary.UsagePercent, primary.TotalGigabytes, download, upload,
-            processCount, TimeSpan.FromMilliseconds(Environment.TickCount64), processes, disks, cores, hardware.Sensors, hardware.TemperatureSource, _cpuInfo);
+            processCount, TimeSpan.FromMilliseconds(Environment.TickCount64), processes, disks, cores, hardware.Sensors, hardware.TemperatureSource, _cpuInfo,
+            diskPerformance.ActivePercent, diskPerformance.ReadMbps, diskPerformance.WriteMbps);
     }
 
     public void Dispose() => _hardwareSensors.Dispose();
@@ -116,6 +121,45 @@ public sealed class WindowsSystemMetricsProvider : ISystemMetricsProvider, IDisp
             return new DiskMetric(drive.Name.TrimEnd('\\'), label, used, total, total == 0 ? 0 : used * 100 / total);
         })
         .ToList();
+
+    private DiskPerformanceSample ReadDiskPerformanceInBackground()
+    {
+        if (!OperatingSystem.IsWindows()) return default;
+        var task = Volatile.Read(ref _diskPerformanceTask);
+        if (task is null)
+        {
+            var started = Task.Run(ReadDiskPerformanceCore);
+            task = Interlocked.CompareExchange(ref _diskPerformanceTask, started, null) ?? started;
+        }
+
+        if (!task.IsCompleted) return _lastDiskPerformance;
+
+        try { _lastDiskPerformance = task.GetAwaiter().GetResult(); }
+        catch { /* Keep the last successful driver counter sample. */ }
+        finally { Interlocked.CompareExchange(ref _diskPerformanceTask, null, task); }
+        return _lastDiskPerformance;
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static DiskPerformanceSample ReadDiskPerformanceCore()
+    {
+        if (!OperatingSystem.IsWindows()) return default;
+        using var searcher = new System.Management.ManagementObjectSearcher(
+            "root\\CIMV2",
+            "SELECT Name, PercentDiskTime, DiskReadBytesPersec, DiskWriteBytesPersec FROM Win32_PerfFormattedData_PerfDisk_PhysicalDisk");
+        using var results = searcher.Get();
+        var rows = results.Cast<System.Management.ManagementObject>().ToArray();
+        var row = rows.FirstOrDefault(item => string.Equals(Convert.ToString(item["Name"]), "_Total", StringComparison.OrdinalIgnoreCase))
+                  ?? rows.FirstOrDefault();
+        if (row is null) return default;
+        static double ReadCounter(System.Management.ManagementBaseObject source, string property) =>
+            double.TryParse(Convert.ToString(source[property], System.Globalization.CultureInfo.InvariantCulture),
+                System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value) ? value : 0;
+        return new DiskPerformanceSample(
+            Math.Clamp(ReadCounter(row, "PercentDiskTime"), 0, 100),
+            Math.Max(0, ReadCounter(row, "DiskReadBytesPersec") / 1_000_000d),
+            Math.Max(0, ReadCounter(row, "DiskWriteBytesPersec") / 1_000_000d));
+    }
 
     private (double DownloadMbps, double UploadMbps) ReadNetwork()
     {
@@ -227,6 +271,7 @@ public sealed class WindowsSystemMetricsProvider : ISystemMetricsProvider, IDisp
     private readonly record struct NetworkSample(long Received, long Sent, long Timestamp);
     private readonly record struct ProcessSample(TimeSpan TotalCpu, DateTime SampledAt);
     private readonly record struct MemorySample(double TotalGigabytes, double UsagePercent);
+    private readonly record struct DiskPerformanceSample(double ActivePercent, double ReadMbps, double WriteMbps);
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)] private struct MemoryStatus
     {

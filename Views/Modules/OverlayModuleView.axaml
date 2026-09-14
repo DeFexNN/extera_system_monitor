@@ -26,14 +26,14 @@
         <Border Grid.Column="1" Background="{DynamicResource ThemeChromeBrush}" BorderBrush="{DynamicResource ThemeAccentBrush}" BorderThickness="1" CornerRadius="17" Padding="18" Opacity="{Binding PreviewOpacity}">
           <StackPanel Spacing="13">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-              <StackPanel Spacing="3"><TextBlock Text="LIVE PREVIEW" Foreground="{DynamicResource ThemeSoftBrush}" FontSize="10" FontWeight="Bold" LetterSpacing="1.5"/><TextBlock Text="EXTERA MONITOR" Foreground="{DynamicResource ThemeWindowBrush}" FontSize="15" FontWeight="SemiBold"/></StackPanel>
-              <Border Grid.Column="1" Background="{DynamicResource ThemeAccentBrush}" CornerRadius="7" Padding="8,5" VerticalAlignment="Center"><TextBlock Text="{Binding StatusLabel}" Foreground="{DynamicResource ThemeWindowBrush}" FontSize="9" FontWeight="Bold"/></Border>
+              <StackPanel Spacing="3"><TextBlock Text="LIVE PREVIEW" Foreground="{DynamicResource ThemeMutedTextBrush}" FontSize="10" FontWeight="Bold" LetterSpacing="1.5"/><TextBlock Text="EXTERA MONITOR" Foreground="{DynamicResource ThemeTextBrush}" FontSize="15" FontWeight="SemiBold"/></StackPanel>
+              <Border Grid.Column="1" Background="{DynamicResource ThemeAccentBrush}" CornerRadius="7" Padding="8,5" VerticalAlignment="Center"><TextBlock Text="{Binding StatusLabel}" Foreground="{DynamicResource ThemeOnAccentBrush}" FontSize="9" FontWeight="Bold"/></Border>
             </Grid>
             <Border Height="1" Background="{DynamicResource ThemeAccentBrush}"/>
-            <StackPanel IsVisible="{Binding ShowCpu}" Spacing="3"><TextBlock Text="CPU LOAD" Foreground="{DynamicResource ThemeSoftBrush}" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding Cpu, StringFormat={}{0:0.0}%}" Foreground="{DynamicResource ThemeWindowBrush}" FontSize="25" FontWeight="SemiBold"/></StackPanel>
-            <StackPanel IsVisible="{Binding ShowMemory}" Spacing="3"><TextBlock Text="MEMORY" Foreground="{DynamicResource ThemeSoftBrush}" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding MemoryLabel}" Foreground="{DynamicResource ThemeWindowBrush}" FontSize="25" FontWeight="SemiBold"/></StackPanel>
-            <StackPanel IsVisible="{Binding ShowNetwork}" Spacing="3"><TextBlock Text="NETWORK" Foreground="{DynamicResource ThemeSoftBrush}" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding NetworkText}" Foreground="{DynamicResource ThemeWindowBrush}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/></StackPanel>
-            <TextBlock Text="No metrics selected" Foreground="{DynamicResource ThemeSoftBrush}" FontSize="12" IsVisible="{Binding HasNoVisibleMetrics}"/>
+            <StackPanel IsVisible="{Binding ShowCpu}" Spacing="3"><TextBlock Text="CPU LOAD" Foreground="{DynamicResource ThemeMutedTextBrush}" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding Cpu, StringFormat={}{0:0.0}%}" Foreground="{DynamicResource ThemeTextBrush}" FontSize="25" FontWeight="SemiBold"/></StackPanel>
+            <StackPanel IsVisible="{Binding ShowMemory}" Spacing="3"><TextBlock Text="MEMORY" Foreground="{DynamicResource ThemeMutedTextBrush}" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding MemoryLabel}" Foreground="{DynamicResource ThemeTextBrush}" FontSize="25" FontWeight="SemiBold"/></StackPanel>
+            <StackPanel IsVisible="{Binding ShowNetwork}" Spacing="3"><TextBlock Text="NETWORK" Foreground="{DynamicResource ThemeMutedTextBrush}" FontSize="9" LetterSpacing="1.2"/><TextBlock Text="{Binding NetworkText}" Foreground="{DynamicResource ThemeTextBrush}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/></StackPanel>
+            <TextBlock Text="No metrics selected" Foreground="{DynamicResource ThemeMutedTextBrush}" FontSize="12" IsVisible="{Binding HasNoVisibleMetrics}"/>
           </StackPanel>
         </Border>
       </Grid>

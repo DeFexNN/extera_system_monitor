@@ -129,14 +129,15 @@ public sealed class SqliteMetricsHistoryRepository : IMetricsHistoryRepository, 
         using var command = connection.CreateCommand(); command.CommandText = "SELECT name,color FROM theme_palette";
         using var reader = command.ExecuteReader();
         while (reader.Read()) colors[reader.GetString(0)] = reader.GetString(1);
-        return new ThemePaletteSettings(colors);
+        var theme = colors.Remove("THEME", out var savedTheme) && savedTheme == "Dark" ? "Dark" : "Light";
+        return new ThemePaletteSettings(colors, theme);
     }
 
     public void SaveThemePalette(ThemePaletteSettings settings)
     {
         using var connection = new SqliteConnection(_connectionString); connection.Open(); using var transaction = connection.BeginTransaction();
         using (var clear = connection.CreateCommand()) { clear.Transaction = transaction; clear.CommandText = "DELETE FROM theme_palette"; clear.ExecuteNonQuery(); }
-        foreach (var color in settings.Colors)
+        foreach (var color in settings.Colors.Append(new KeyValuePair<string, string>("THEME", settings.Theme)))
         {
             using var command = connection.CreateCommand(); command.Transaction = transaction;
             command.CommandText = "INSERT INTO theme_palette(name,color) VALUES($name,$color)";

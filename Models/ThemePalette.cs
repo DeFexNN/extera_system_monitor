@@ -1,3 +1,3 @@
 namespace ExteraMonitor.Models;
 
-public sealed record ThemePaletteSettings(IReadOnlyDictionary<string, string> Colors);
+public sealed record ThemePaletteSettings(IReadOnlyDictionary<string, string> Colors, string Theme = "Light");

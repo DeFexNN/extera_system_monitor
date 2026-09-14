@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-label="Extera Monitor logo">
+  <rect width="180" height="180" rx="42" fill="#10191a"/>
+  <circle cx="90" cy="90" r="62" fill="none" stroke="#31494b" stroke-width="3"/>
+  <path d="M90 28a62 62 0 0 1 57 38" fill="none" stroke="#70b8ba" stroke-width="7" stroke-linecap="round"/>
+  <path d="M143 114a62 62 0 0 1-37 34" fill="none" stroke="#70b8ba" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="37" cy="116" r="5" fill="#70b8ba"/>
+  <path d="M67 58v64M67 58h49M67 90h38M67 122h49" fill="none" stroke="#e4efec" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -9,7 +9,7 @@
       <Setter Property="Background" Value="{DynamicResource ThemeWindowBrush}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource ThemeSoftBrush}"/>
       <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="Foreground" Value="{DynamicResource ThemeChromeBrush}"/>
+      <Setter Property="Foreground" Value="{DynamicResource ThemeTextBrush}"/>
       <Setter Property="CornerRadius" Value="7"/>
       <Setter Property="Padding" Value="8,4"/>
       <Setter Property="MinHeight" Value="26"/>
@@ -17,14 +17,14 @@
     <Style Selector="Button.cpu-history-toggle.active">
       <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
-      <Setter Property="Foreground" Value="{DynamicResource ThemeWindowBrush}"/>
+      <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentBrush}"/>
     </Style>
     <Style Selector="Button.cpu-history-toggle:pointerover">
       <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
     </Style>
     <Style Selector="Button.cpu-history-toggle.active:pointerover">
       <Setter Property="Background" Value="{DynamicResource ThemeChromeBrush}"/>
-      <Setter Property="Foreground" Value="{DynamicResource ThemeWindowBrush}"/>
+      <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentBrush}"/>
     </Style>
   </UserControl.Styles>
   <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -316,7 +316,7 @@
                       <TextBlock Text="{Binding Title}" FontSize="10" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
                       <TextBlock Text="{Binding Summary}" Classes="muted" FontSize="8" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
-                    <Button Grid.Column="1" Classes="toolbar-action" Content="ADD" Foreground="{DynamicResource ThemeChromeBrush}" Command="{Binding AddCommand}" IsVisible="{Binding CanAdd}" VerticalAlignment="Center" ToolTip.Tip="Add this card"/>
+                    <Button Grid.Column="1" Classes="toolbar-action" Content="ADD" Foreground="{DynamicResource ThemeTextBrush}" Command="{Binding AddCommand}" IsVisible="{Binding CanAdd}" VerticalAlignment="Center" ToolTip.Tip="Add this card"/>
                     <Border Grid.Column="1" Background="{DynamicResource ThemeSoftBrush}" CornerRadius="5" Padding="5,3" IsVisible="{Binding IsAdded}" VerticalAlignment="Center"><TextBlock Text="ADDED" Foreground="{DynamicResource ThemeAccentBrush}" FontSize="8" FontWeight="Bold"/></Border>
                   </Grid>
                 </DataTemplate>

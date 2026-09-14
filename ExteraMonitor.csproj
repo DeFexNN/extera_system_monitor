@@ -13,9 +13,9 @@
   <ItemGroup>
     <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />
-    <Content Include="Driver\kvc.exe" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Driver\kvc.dat" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Driver\ExteraMonitorDriver.sys" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Driver\kvc.exe" CopyToOutputDirectory="PreserveNewest" Condition="Exists('Driver\kvc.exe')" />
+    <Content Include="Driver\kvc.dat" CopyToOutputDirectory="PreserveNewest" Condition="Exists('Driver\kvc.dat')" />
+    <Content Include="Driver\ExteraMonitorDriver.sys" CopyToOutputDirectory="PreserveNewest" Condition="Exists('Driver\ExteraMonitorDriver.sys')" />
   </ItemGroup>
 
   <ItemGroup>

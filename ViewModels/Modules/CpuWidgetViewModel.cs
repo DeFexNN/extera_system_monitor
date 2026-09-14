@@ -136,7 +136,25 @@ public sealed class CpuWidgetViewModel : ViewModelBase
         foreach (var styleModel in Styles) styleModel.Changed = StyleChanged;
     }
 
-    public void SetAccent(Color color) => ActiveStyle.AccentColor = color;
+    public void SetAccent(Color color)
+    {
+        ActiveStyle.AccentColor = color;
+        ActiveStyle.BorderColor = color;
+    }
+
+    public void ApplyTheme(bool dark)
+    {
+        foreach (var style in Styles)
+        {
+            style.Load(
+                dark ? "#1B2426" : "#F5FBF9",
+                dark ? "#E4EFEC" : "#203033",
+                dark ? "#9CB5B3" : "#587174",
+                style.AccentHex,
+                style.AccentHex);
+        }
+        NotifyVisuals();
+    }
 
     public void LoadStyles(IEnumerable<CpuWidgetStyleSettings> settings)
     {
