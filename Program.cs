@@ -27,19 +27,6 @@ sealed class Program
             return;
         }
 
-        if (args.Contains("--driver-security-diagnostics"))
-        {
-            if (!OperatingSystem.IsWindows())
-            {
-                Console.Error.WriteLine("Driver security diagnostics are available on Windows only.");
-                Environment.ExitCode = 2;
-                return;
-            }
-
-            Console.WriteLine(DriverSecurityDiagnostics.Collect());
-            return;
-        }
-
         var captureIndex = Array.IndexOf(args, "--capture");
         if (captureIndex < 0) captureIndex = Array.IndexOf(args, "--capture-cpu");
         if (captureIndex >= 0)

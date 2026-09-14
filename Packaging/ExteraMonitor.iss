@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.2.1"
+  #define AppVersion "0.2.2"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\artifacts\stage\ExteraMonitor"
@@ -61,8 +61,8 @@ ukrainian.NetRuntimeStartFailed=Не вдалося запустити інст�
 ukrainian.NetRuntimeInstallFailed=Не вдалося встановити .NET 10 Runtime. Код завершення: %d.
 ukrainian.NetRuntimeBusyRetry=Windows уже встановлює або оновлює іншу програму. Дочекайся завершення, потім натисни «Повторити», щоб знову відкрити інсталятор .NET.
 ukrainian.NetRuntimeStillMissing=Середовище .NET 10 досі не встановлено. Повтори завантаження та встановлення.
-english.DriverUpgradeFailed=Could not stop and remove the running Extera Monitor driver. Close Extera Monitor and try again; if it still fails, restart Windows and rerun setup.
-ukrainian.DriverUpgradeFailed=Не вдалося зупинити й видалити активний драйвер Extera Monitor. Закрий Extera Monitor і повтори спробу; якщо помилка лишиться, перезавантаж Windows та запусти інсталятор знову.
+english.DriverUpgradeFailed=The previous Extera Monitor installation could not be closed and removed completely. Close Extera Monitor and try again; if it still fails, restart Windows and rerun setup.
+ukrainian.DriverUpgradeFailed=Не вдалося повністю закрити й видалити попередню версію Extera Monitor. Закрий програму і повтори спробу; якщо помилка лишиться, перезавантаж Windows та запусти інсталятор знову.
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
@@ -77,6 +77,9 @@ Name: "{autodesktop}\Extera Monitor"; Filename: "{app}\ExteraMonitor.exe"; Worki
 
 [Run]
 Filename: "{app}\ExteraMonitor.exe"; Description: "{cm:LaunchProgram,Extera Monitor}"; Flags: nowait postinstall skipifsilent
+
+[UninstallRun]
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command ""$ErrorActionPreference='Stop'; $s=Get-Service -Name 'ExteraMonitorDriver' -ErrorAction SilentlyContinue; if($s){{ if($s.Status -ne 'Stopped'){{ Stop-Service -InputObject $s -Force; $s.WaitForStatus('Stopped',[TimeSpan]::FromSeconds(20)) }}; & sc.exe delete ExteraMonitorDriver | Out-Null; if($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 1060){{ exit $LASTEXITCODE }} }}; exit 0"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveExteraMonitorDriver"
 
 [Code]
 var
@@ -181,6 +184,7 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;
   PowerShellCommand: String;
+  UninstallerPath: String;
 begin
   Result := '';
   if not HasNet10Runtime then
@@ -189,16 +193,39 @@ begin
     Exit;
   end;
 
-  { The monitor intentionally leaves its kernel service loaded after closing.
-    Stop and remove it before replacing the bundled .sys file during an update. }
+  { Stop the app and its resident kernel service before uninstalling the old copy. }
   PowerShellCommand := '$ErrorActionPreference=''Stop''; ' +
+    'Get-Process -Name ''ExteraMonitor'' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction Stop; ' +
+    'Start-Sleep -Milliseconds 500; ' +
     '$s=Get-Service -Name ''ExteraMonitorDriver'' -ErrorAction SilentlyContinue; ' +
     'if($s){ if($s.Status -ne ''Stopped''){ Stop-Service -InputObject $s -Force; ' +
     '$s.WaitForStatus(''Stopped'',[TimeSpan]::FromSeconds(20)) }; ' +
     '& sc.exe delete ExteraMonitorDriver | Out-Null; ' +
-    'if($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 1060){ exit $LASTEXITCODE } }; exit 0';
+    'if($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 1060){ exit $LASTEXITCODE }; ' +
+    'for($i=0;$i -lt 40;$i++){ & sc.exe query ExteraMonitorDriver *> $null; ' +
+    'if($LASTEXITCODE -eq 1060){ exit 0 }; Start-Sleep -Milliseconds 250 }; exit 3 }; exit 0';
   if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
       '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "' + PowerShellCommand + '"',
       '', SW_HIDE, ewWaitUntilTerminated, ResultCode) or (ResultCode <> 0) then
+  begin
+    Result := CustomMessage('DriverUpgradeFailed');
+    Exit;
+  end;
+
+  { Run the registered uninstaller so shortcuts, registration and every tracked
+    application file are removed. Then remove untracked leftovers too. Setup
+    will recreate the selected install directory and lay down a complete package. }
+  UninstallerPath := ExpandConstant('{app}\unins000.exe');
+  if FileExists(UninstallerPath) then
+  begin
+    if not Exec(UninstallerPath, '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART',
+        ExpandConstant('{tmp}'), SW_HIDE, ewWaitUntilTerminated, ResultCode) or (ResultCode <> 0) then
+    begin
+      Result := CustomMessage('DriverUpgradeFailed');
+      Exit;
+    end;
+  end;
+
+  if DirExists(ExpandConstant('{app}')) and not DelTree(ExpandConstant('{app}'), True, True, True) then
     Result := CustomMessage('DriverUpgradeFailed');
 end;

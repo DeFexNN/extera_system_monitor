@@ -18,6 +18,7 @@ public sealed class KernelDriverLoader : IDisposable
     private bool _hasReportedConnected;
 
     public static event Action? DriverLoadFailed;
+    public static string? LastFailureReport { get; private set; }
 
     public bool TryLoad() => TryLoad(automatic: false);
 
@@ -335,8 +336,14 @@ public sealed class KernelDriverLoader : IDisposable
                     "----- Windows security and virtualization diagnostics -----" + Environment.NewLine + securityDiagnostics + Environment.NewLine + Environment.NewLine +
                     "----- KVC stdout -----" + Environment.NewLine + command.Output + Environment.NewLine +
                     "----- KVC stderr -----" + Environment.NewLine + command.Error + Environment.NewLine;
-                DriverDiagnostics.SaveAndQueueArtifact($"kvc-{action}-failure.txt", $"KVC output: driver {action} failed; service state {service.State}.", kvcArtifact);
+                var artifactPath = DriverDiagnostics.SaveAndQueueArtifact($"kvc-{action}-failure.txt", $"KVC output: driver {action} failed; service state {service.State}.", kvcArtifact);
                 DriverDiagnostics.QueueLogUpload();
+                LastFailureReport =
+                    $"Driver load failed after 10 seconds.{Environment.NewLine}KVC exit code: {command.ExitCode?.ToString() ?? "n/a"}; service: {service.State}.{Environment.NewLine}" +
+                    $"Local log: {DriverDiagnostics.LogFilePath}{Environment.NewLine}KVC report: {artifactPath ?? "could not be saved"}{Environment.NewLine}{Environment.NewLine}" +
+                    "----- Windows security and virtualization diagnostics -----" + Environment.NewLine + securityDiagnostics + Environment.NewLine + Environment.NewLine +
+                    "----- KVC stdout -----" + Environment.NewLine + DriverDiagnostics.Limit(command.Output, 24_000) + Environment.NewLine +
+                    "----- KVC stderr -----" + Environment.NewLine + DriverDiagnostics.Limit(command.Error, 24_000);
                 DriverLoadFailed?.Invoke();
             }
         }

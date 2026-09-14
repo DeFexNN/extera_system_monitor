@@ -66,11 +66,23 @@ public partial class App : Application
     {
         if (Interlocked.Exchange(ref _driverFailureShutdownQueued, 1) != 0) return;
         KernelDriverLoader.DriverLoadFailed -= OnDriverLoadFailed;
-        _ = Task.Run(() =>
+        Dispatcher.UIThread.Post(() => _ = ShowDriverFailureWindowAsync());
+    }
+
+    private async Task ShowDriverFailureWindowAsync()
+    {
+        var telegramFlush = Task.Run(() => DriverDiagnostics.FlushTelegram(TimeSpan.FromSeconds(20)));
+        try
         {
-            DriverDiagnostics.FlushTelegram(TimeSpan.FromSeconds(20));
-            Dispatcher.UIThread.Post(() => _desktop?.Shutdown(1));
-        });
+            if (_mainWindow is { } owner)
+                await new DriverFailureWindow().ShowDialog(owner);
+        }
+        finally
+        {
+            await telegramFlush;
+            _mainWindow?.PrepareForApplicationExit();
+            _desktop?.Shutdown(1);
+        }
     }
 
     private void TrayIcon_Clicked(object? sender, EventArgs e) => ShowMainWindow();
