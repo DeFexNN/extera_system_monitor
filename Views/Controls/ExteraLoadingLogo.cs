@@ -13,12 +13,15 @@ public sealed class ExteraLoadingLogo : Control
         AvaloniaProperty.Register<ExteraLoadingLogo, IBrush?>(nameof(Accent));
     public static readonly StyledProperty<IBrush?> TrackProperty =
         AvaloniaProperty.Register<ExteraLoadingLogo, IBrush?>(nameof(Track));
+    public static readonly StyledProperty<bool> IsAnimatedProperty =
+        AvaloniaProperty.Register<ExteraLoadingLogo, bool>(nameof(IsAnimated), true);
 
     private readonly DispatcherTimer _timer;
     private double _phase;
 
     public IBrush? Accent { get => GetValue(AccentProperty); set => SetValue(AccentProperty, value); }
     public IBrush? Track { get => GetValue(TrackProperty); set => SetValue(TrackProperty, value); }
+    public bool IsAnimated { get => GetValue(IsAnimatedProperty); set => SetValue(IsAnimatedProperty, value); }
 
     public ExteraLoadingLogo()
     {
@@ -32,7 +35,7 @@ public sealed class ExteraLoadingLogo : Control
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        if (IsVisible) _timer.Start();
+        if (IsVisible && IsAnimated) _timer.Start();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -44,10 +47,10 @@ public sealed class ExteraLoadingLogo : Control
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == AccentProperty || change.Property == TrackProperty) InvalidateVisual();
-        if (change.Property == IsVisibleProperty)
+        if (change.Property == AccentProperty || change.Property == TrackProperty || change.Property == IsAnimatedProperty) InvalidateVisual();
+        if (change.Property == IsVisibleProperty || change.Property == IsAnimatedProperty)
         {
-            if (IsVisible) _timer.Start();
+            if (IsVisible && IsAnimated) _timer.Start();
             else _timer.Stop();
         }
     }
