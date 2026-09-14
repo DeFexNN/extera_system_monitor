@@ -11,11 +11,14 @@ namespace ExteraMonitor.Views;
 public partial class MainWindow : Window
 {
     private OverlayWindow? _overlayWindow;
+    private bool _applicationExitRequested;
+    public bool IsTrayModeEnabled { get; init; }
 
     public MainWindow()
     {
         InitializeComponent();
         Opened += MainWindow_Opened;
+        Closing += MainWindow_Closing;
         Closed += MainWindow_Closed;
     }
 
@@ -89,6 +92,23 @@ public partial class MainWindow : Window
         _overlayWindow?.CloseFromOwner();
         _overlayWindow = null;
     }
+
+    private void MainWindow_Closing(object? sender, WindowClosingEventArgs e)
+    {
+        if (!IsTrayModeEnabled || _applicationExitRequested ||
+            e.CloseReason is WindowCloseReason.ApplicationShutdown or WindowCloseReason.OSShutdown) return;
+        e.Cancel = true;
+        Hide();
+    }
+
+    public void RestoreFromTray()
+    {
+        if (!IsVisible) Show();
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Activate();
+    }
+
+    public void PrepareForApplicationExit() => _applicationExitRequested = true;
 
     private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)
     {

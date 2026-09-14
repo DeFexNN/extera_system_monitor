@@ -8,9 +8,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\extera-monitor.ico</ApplicationIcon>
-    <Version>0.2.0</Version>
-    <FileVersion>0.2.0.0</FileVersion>
-    <AssemblyVersion>0.2.0.0</AssemblyVersion>
+    <Version>0.2.1</Version>
+    <FileVersion>0.2.1.0</FileVersion>
+    <AssemblyVersion>0.2.1.0</AssemblyVersion>
     <DefaultItemExcludes>$(DefaultItemExcludes);obj-verify/**;build-verify/**;TempProbe/**</DefaultItemExcludes>
   </PropertyGroup>
 

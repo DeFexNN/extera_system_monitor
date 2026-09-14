@@ -104,6 +104,8 @@ Each release contains two Windows x64 packages:
 - **Installer** — installs into Program Files and creates Start menu and optional desktop shortcuts.
 - **Portable ZIP** — extract the complete folder anywhere and run `ExteraMonitor.exe`; no installation or separate .NET runtime is required.
 
+The installer adds Extera Monitor to the Windows Start menu and enables a desktop shortcut by default. While running, closing the main window keeps monitoring active in the system tray; use the tray menu to reopen the dashboard, pause/resume sampling, or exit completely.
+
 Both variants request administrator access when launched because the hardware telemetry driver must be loaded.
 
 ## Supported systems
@@ -141,7 +143,7 @@ The UI and standard Windows/LibreHardwareMonitor sources build without checked-i
 ### Release packages
 
 ```powershell
-.\Packaging\Build-Release.ps1 -Version 0.2.0
+.\Packaging\Build-Release.ps1 -Version 0.2.1
 ```
 
 The packaging script creates a self-contained installer, portable ZIP, and SHA-256 checksum file in `artifacts/`. Inno Setup 6 is required when building the installer locally.

@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.2.0"
+  #define AppVersion "0.2.1"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\artifacts\stage\ExteraMonitor"
@@ -43,13 +43,14 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "ukrainian"; MessagesFile: "compiler:Languages\Ukrainian.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\Extera Monitor"; Filename: "{app}\ExteraMonitor.exe"; WorkingDir: "{app}"
+Name: "{autoprograms}\Extera Monitor\Extera Monitor"; Filename: "{app}\ExteraMonitor.exe"; WorkingDir: "{app}"
+Name: "{autoprograms}\Extera Monitor\Uninstall Extera Monitor"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\Extera Monitor"; Filename: "{app}\ExteraMonitor.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
