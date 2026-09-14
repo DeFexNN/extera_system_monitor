@@ -150,6 +150,8 @@ The packaging script creates a self-contained installer, portable ZIP, and SHA-2
 
 Every push and pull request also runs the [**Build Windows installer** workflow](https://github.com/DeFexNN/extera_system_monitor/actions/workflows/build-installer.yml). Download its installer, portable ZIP, and checksums from the workflow run's **Artifacts** section. The driver runtime binaries are excluded from Git, so automatic cloud builds omit those local files; add the runtime bundle locally before running the release script when a driver-enabled package is required.
 
+On Windows, enable local automatic builds for each commit and merge with `git config core.hooksPath .githooks`. The hooks run the same release script and place the installer, portable ZIP, and checksums in `artifacts/`.
+
 ---
 
 ## Visual Verification

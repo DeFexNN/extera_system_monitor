@@ -1,0 +1,10 @@
+#!/bin/sh
+repo_root=$(git rev-parse --show-toplevel) || exit 1
+
+if command -v pwsh >/dev/null 2>&1; then
+    powershell=pwsh
+else
+    powershell=powershell.exe
+fi
+
+"$powershell" -NoProfile -ExecutionPolicy Bypass -File "$repo_root/Packaging/Build-Release.ps1" -AllowMissingDriverRuntime

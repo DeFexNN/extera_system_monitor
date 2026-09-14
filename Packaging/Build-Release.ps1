@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = "0.2.1",
+    [string]$Version,
     [switch]$AllowMissingDriverRuntime,
     [string]$OutputDirectory
 )
@@ -9,6 +9,11 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    [xml]$project = Get-Content -LiteralPath (Join-Path $projectRoot "ExteraMonitor.csproj") -Raw
+    $Version = $project.Project.PropertyGroup.Version
+    if ([string]::IsNullOrWhiteSpace($Version)) { throw "Version was not found in ExteraMonitor.csproj." }
+}
 $artifactsDir = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     Join-Path $projectRoot "artifacts"
 } else {
@@ -37,10 +42,12 @@ if (-not $AllowMissingDriverRuntime) {
     }
 } else {
     $missingRuntime = @(
-        (Join-Path $projectRoot "Driver\ExteraMonitorDriver.sys"),
-        (Join-Path $projectRoot "Driver\kvc.exe"),
-        (Join-Path $projectRoot "Driver\kvc.dat")
-    ) | Where-Object { -not (Test-Path -LiteralPath $_) }
+        @(
+            (Join-Path $projectRoot "Driver\ExteraMonitorDriver.sys"),
+            (Join-Path $projectRoot "Driver\kvc.exe"),
+            (Join-Path $projectRoot "Driver\kvc.dat")
+        ) | Where-Object { -not (Test-Path -LiteralPath $_) }
+    )
     if ($missingRuntime.Count -gt 0) {
         Write-Warning "Building without the locally excluded driver runtime files: $($missingRuntime -join ', ')"
     }
