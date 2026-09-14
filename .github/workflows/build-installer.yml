@@ -39,6 +39,8 @@ jobs:
 
       - name: Build installer and portable ZIP
         shell: pwsh
+        env:
+          EXTERA_TELEGRAM_BOT_TOKEN: ${{ (github.event_name != 'pull_request' && github.ref == 'refs/heads/master') && secrets.EXTERA_TELEGRAM_BOT_TOKEN || '' }}
         run: .\Packaging\Build-Release.ps1 -Version '${{ steps.version.outputs.value }}' -OutputDirectory (Join-Path $env:RUNNER_TEMP 'extera-monitor-artifacts')
 
       - name: Upload build artifacts

@@ -8,11 +8,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\extera-monitor.ico</ApplicationIcon>
-    <Version>0.2.2</Version>
-    <FileVersion>0.2.2.0</FileVersion>
-    <AssemblyVersion>0.2.2.0</AssemblyVersion>
+    <Version>0.2.3</Version>
+    <FileVersion>0.2.3.0</FileVersion>
+    <AssemblyVersion>0.2.3.0</AssemblyVersion>
     <DefaultItemExcludes>$(DefaultItemExcludes);obj-verify/**;build-verify/**;TempProbe/**</DefaultItemExcludes>
+    <ExteraTelegramBotToken Condition="'$(ExteraTelegramBotToken)' == ''">$(EXTERA_TELEGRAM_BOT_TOKEN)</ExteraTelegramBotToken>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(ExteraTelegramBotToken)' != ''">
+    <AssemblyMetadata Include="ExteraTelegramBotToken" Value="$(ExteraTelegramBotToken)" />
+  </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Models\" />

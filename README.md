@@ -143,7 +143,7 @@ The UI and standard Windows/LibreHardwareMonitor sources build without checked-i
 ### Release packages
 
 ```powershell
-.\Packaging\Build-Release.ps1 -Version 0.2.2
+.\Packaging\Build-Release.ps1 -Version 0.2.3
 ```
 
 The packaging script creates a compact installer, a self-contained portable ZIP, and a SHA-256 checksum file in `artifacts/`. If .NET 10 is not already installed, the installer shows download progress while fetching its runtime from Microsoft, then displays the runtime installer. Inno Setup 6 is required when building locally.
@@ -160,13 +160,9 @@ During normal startup, if KVC does not bring the service to `RUNNING` within 10 
 
 If the driver fails to start, a normal launch from the Start menu displays the security snapshot and KVC output in a diagnostic window. The report is also saved under `%LOCALAPPDATA%\Extera Monitor\Logs`; use **Open logs folder** to view or share it.
 
-To enable Telegram updates, create a bot with Telegram's `@BotFather` and send `/start` in its private chat. For local development, `.env` may contain either a raw token on its own line or `EXTERA_TELEGRAM_BOT_TOKEN=<token>`; `.env` is ignored by Git. Installed copies should use the Windows user environment and be restarted afterward:
+To enable Telegram updates, create a bot with Telegram's `@BotFather` and send `/start` in its private chat. Local development reads `.env` or the `EXTERA_TELEGRAM_BOT_TOKEN` environment variable. Local release builds embed the token found in `.env`, and trusted GitHub builds embed the repository Actions secret named `EXTERA_TELEGRAM_BOT_TOKEN`; fork pull-request builds intentionally do not receive it. As a result, a release installer or portable ZIP can send diagnostics from another computer without configuring a token there.
 
-```powershell
-[Environment]::SetEnvironmentVariable('EXTERA_TELEGRAM_BOT_TOKEN', '<your-bot-token>', 'User')
-```
-
-The app sends driver status updates directly to Telegram while it is running; it does not need a separate publicly hosted bot server. Keep the token private and never commit it to the repository. Remove the variable to disable Telegram notifications.
+The app sends driver status updates directly to Telegram while it is running; it does not need a separate publicly hosted bot server. An embedded token can be extracted from a distributed executable, so anyone who receives that build may be able to use the bot token. Only embed a bot token in builds shared with people you trust, and rotate it through `@BotFather` if a build is shared more widely than intended. Never commit the raw token to the repository.
 
 ---
 

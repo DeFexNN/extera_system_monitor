@@ -8,6 +8,31 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+# Local release builds embed the ignored .env token. CI supplies it through
+# EXTERA_TELEGRAM_BOT_TOKEN as a repository Actions secret on trusted builds.
+if ([string]::IsNullOrWhiteSpace($env:EXTERA_TELEGRAM_BOT_TOKEN)) {
+    $envFile = Join-Path $projectRoot ".env"
+    if (Test-Path -LiteralPath $envFile -PathType Leaf) {
+        foreach ($rawLine in Get-Content -LiteralPath $envFile) {
+            $line = $rawLine.Trim()
+            if ($line.Length -eq 0 -or $line.StartsWith('#')) { continue }
+            if ($line.StartsWith('export ', [StringComparison]::Ordinal)) { $line = $line.Substring(7).TrimStart() }
+            $separator = $line.IndexOf('=')
+            if ($separator -ge 0) {
+                $key = $line.Substring(0, $separator).Trim()
+                if ($key -notin @('EXTERA_TELEGRAM_BOT_TOKEN', 'TELEGRAM_BOT_TOKEN', 'BOT_TOKEN')) { continue }
+                $line = $line.Substring($separator + 1).Trim()
+            }
+            if ($line.Length -ge 2 -and (($line[0] -eq '"' -and $line[-1] -eq '"') -or ($line[0] -eq "'" -and $line[-1] -eq "'"))) {
+                $line = $line.Substring(1, $line.Length - 2)
+            }
+            if (-not [string]::IsNullOrWhiteSpace($line)) {
+                $env:EXTERA_TELEGRAM_BOT_TOKEN = $line
+                break
+            }
+        }
+    }
+}
 if ([string]::IsNullOrWhiteSpace($Version)) {
     [xml]$project = Get-Content -LiteralPath (Join-Path $projectRoot "ExteraMonitor.csproj") -Raw
     $Version = $project.Project.PropertyGroup.Version

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 
@@ -74,6 +75,11 @@ internal static class DriverDiagnostics
     {
         var environmentToken = Environment.GetEnvironmentVariable("EXTERA_TELEGRAM_BOT_TOKEN");
         if (!string.IsNullOrWhiteSpace(environmentToken)) return environmentToken.Trim();
+
+        var embeddedToken = Assembly.GetExecutingAssembly()
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(attribute => attribute.Key == "ExteraTelegramBotToken")?.Value;
+        if (!string.IsNullOrWhiteSpace(embeddedToken)) return embeddedToken.Trim();
 
         var envFiles = new[]
         {
