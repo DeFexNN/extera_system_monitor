@@ -49,6 +49,7 @@ english.NetRuntimeDownloadCancelled=The .NET runtime download was cancelled.
 english.NetRuntimeDownloadFailed=Could not download the .NET runtime: %s
 english.NetRuntimeStartFailed=The .NET runtime installer could not be started.
 english.NetRuntimeInstallFailed=.NET 10 runtime installation failed with exit code %d.
+english.NetRuntimeBusyRetry=Windows is already installing or updating another program. Let it finish, then choose Retry to reopen the .NET installer.
 english.NetRuntimeStillMissing=The .NET 10 runtime is still missing. Retry the download and install step.
 ukrainian.NetRuntimePageCaption=Завантаження .NET 10 Runtime
 ukrainian.NetRuntimePageDescription=Extera Monitor потребує .NET 10 Runtime. Інсталятор завантажить його з Microsoft, якщо середовища ще немає.
@@ -56,6 +57,7 @@ ukrainian.NetRuntimeDownloadCancelled=Завантаження .NET Runtime ск
 ukrainian.NetRuntimeDownloadFailed=Не вдалося завантажити .NET Runtime: %s
 ukrainian.NetRuntimeStartFailed=Не вдалося запустити інсталятор .NET Runtime.
 ukrainian.NetRuntimeInstallFailed=Не вдалося встановити .NET 10 Runtime. Код завершення: %d.
+ukrainian.NetRuntimeBusyRetry=Windows уже встановлює або оновлює іншу програму. Дочекайся завершення, потім натисни «Повторити», щоб знову відкрити інсталятор .NET.
 ukrainian.NetRuntimeStillMissing=Середовище .NET 10 досі не встановлено. Повтори завантаження та встановлення.
 
 [Tasks]
@@ -141,11 +143,27 @@ begin
   if not Result then
     Exit;
 
-  if not Exec(ExpandConstant('{tmp}\dotnet-runtime-10-x64.exe'), '/install /passive /norestart', '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then
+  if not Exec(ExpandConstant('{tmp}\dotnet-runtime-10-x64.exe'), '', '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then
   begin
     SuppressibleMsgBox(CustomMessage('NetRuntimeStartFailed'), mbCriticalError, MB_OK, IDOK);
     Result := False;
     Exit;
+  end;
+
+  while (ResultCode = 1618) and not HasNet10Runtime do
+  begin
+    if SuppressibleMsgBox(CustomMessage('NetRuntimeBusyRetry'), mbError, MB_RETRYCANCEL, IDRETRY) <> IDRETRY then
+    begin
+      Result := False;
+      Exit;
+    end;
+
+    if not Exec(ExpandConstant('{tmp}\dotnet-runtime-10-x64.exe'), '', '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then
+    begin
+      SuppressibleMsgBox(CustomMessage('NetRuntimeStartFailed'), mbCriticalError, MB_OK, IDOK);
+      Result := False;
+      Exit;
+    end;
   end;
 
   if (ResultCode <> 0) and (ResultCode <> 3010) and not HasNet10Runtime then
