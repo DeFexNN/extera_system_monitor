@@ -1,7 +1,6 @@
 [CmdletBinding()]
 param(
     [string]$Version,
-    [switch]$AllowMissingDriverRuntime,
     [string]$OutputDirectory
 )
 
@@ -31,26 +30,13 @@ $innoCandidates = @(
 $innoCompiler = $innoCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 if (-not $innoCompiler) { throw "Inno Setup 6 compiler was not found." }
 
-if (-not $AllowMissingDriverRuntime) {
-    $requiredRuntime = @(
-        (Join-Path $projectRoot "Driver\ExteraMonitorDriver.sys"),
-        (Join-Path $projectRoot "Driver\kvc.exe"),
-        (Join-Path $projectRoot "Driver\kvc.dat")
-    )
-    foreach ($required in $requiredRuntime) {
-        if (-not (Test-Path -LiteralPath $required)) { throw "Required release input is missing: $required" }
-    }
-} else {
-    $missingRuntime = @(
-        @(
-            (Join-Path $projectRoot "Driver\ExteraMonitorDriver.sys"),
-            (Join-Path $projectRoot "Driver\kvc.exe"),
-            (Join-Path $projectRoot "Driver\kvc.dat")
-        ) | Where-Object { -not (Test-Path -LiteralPath $_) }
-    )
-    if ($missingRuntime.Count -gt 0) {
-        Write-Warning "Building without the locally excluded driver runtime files: $($missingRuntime -join ', ')"
-    }
+$requiredRuntime = @(
+    (Join-Path $projectRoot "Driver\ExteraMonitorDriver.sys"),
+    (Join-Path $projectRoot "Driver\kvc.exe"),
+    (Join-Path $projectRoot "Driver\kvc.dat")
+)
+foreach ($required in $requiredRuntime) {
+    if (-not (Test-Path -LiteralPath $required)) { throw "Required release input is missing: $required" }
 }
 
 foreach ($required in @($innoCompiler)) {

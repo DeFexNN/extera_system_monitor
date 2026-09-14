@@ -7,4 +7,4 @@ else
     powershell=powershell.exe
 fi
 
-"$powershell" -NoProfile -ExecutionPolicy Bypass -File "$repo_root/Packaging/Build-Release.ps1" -AllowMissingDriverRuntime
+"$powershell" -NoProfile -ExecutionPolicy Bypass -File "$repo_root/Packaging/Build-Release.ps1"

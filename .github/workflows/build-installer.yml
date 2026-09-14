@@ -35,7 +35,7 @@ jobs:
 
       - name: Build installer and portable ZIP
         shell: pwsh
-        run: .\Packaging\Build-Release.ps1 -Version '${{ steps.version.outputs.value }}' -AllowMissingDriverRuntime -OutputDirectory (Join-Path $env:RUNNER_TEMP 'extera-monitor-artifacts')
+        run: .\Packaging\Build-Release.ps1 -Version '${{ steps.version.outputs.value }}' -OutputDirectory (Join-Path $env:RUNNER_TEMP 'extera-monitor-artifacts')
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
